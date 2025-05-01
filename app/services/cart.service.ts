@@ -247,7 +247,7 @@ export const cartService = {
     const [data, total] = await Promise.all([
       prisma.cart.findMany({
         where,
-        orderBy: { [sortBy]: order },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
