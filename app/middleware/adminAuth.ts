@@ -22,6 +22,7 @@ export const checkAdminRole = async (req: NextRequest) => {
       );
     }
   } catch (error) {
+    console.log(error)
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }
