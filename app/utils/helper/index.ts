@@ -16,7 +16,7 @@ export const checkNameConflict = async (
   const trimmedName = name.trim();
 
   // Helper to build a generic query
-  // @ts-ignore
+
   const buildQuery = async (table: ModelName, where: Record<string, any>): Promise<boolean> => {
     const result = await (prisma[table] as any).findFirst({
       where: {
