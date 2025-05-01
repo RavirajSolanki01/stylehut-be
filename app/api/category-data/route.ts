@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { categoryService } from "@/app/services/category.service";
 import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
