@@ -1,0 +1,249 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// npx prisma init  => init the prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model users {
+  id           Int      @id @default(autoincrement()) // Primary key
+  first_name   String?  @db.VarChar(30)              // First name (optional)
+  last_name    String?  @db.VarChar(30)              // Last name (optional)
+  profile_url  String?  @db.VarChar(255)             // Profile URL (optional)
+  email        String   @unique                      // Unique email (required)
+  role_id      Int?                                  // Foreign key for Role (optional)
+  mobile       String?  @db.VarChar(10)              // Mobile number (optional)
+  gender_id    Int?                                  // Foreign key for Gender (optional)
+  birth_date   String?                             // Birth date (optional)
+  otp          String?                               // Store OTP temporarily
+  otp_verified Boolean  @default(false)              // OTP verified status
+  create_at    DateTime @default(now())              // Timestamp when created
+  updated_at   DateTime @updatedAt                   // Auto-updated timestamp
+  is_deleted   Boolean  @default(false)              // Soft delete flag
+  ratings      ratings[]
+
+  //relations
+  role         role? @relation(fields: [role_id], references: [id])
+  gender       gender? @relation(fields: [gender_id], references: [id])
+  wishlist     wishlist[]
+  address      address[]
+  cart         cart[]
+  
+}
+
+model address {
+  id                  Int      @id @default(autoincrement())
+  user_id             Int
+  full_name           String   @db.VarChar(100)
+  phone               String   @db.VarChar(15)
+  address_line1       String  @db.VarChar(255)
+  address_line2       String? @db.VarChar(255)
+  city                String   @db.VarChar(100)
+  state               String   @db.VarChar(100)
+  postal_code         String   @db.VarChar(20)
+  is_default          Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  is_deleted          Boolean  @default(false)
+
+  // Relations
+  user                users    @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+}
+
+model category {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(30)
+  description  String   @db.VarChar(100)
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+
+  //Relations
+  sub_categories       sub_category[]
+  sub_category_types   sub_category_type[]
+  products             products[]
+}
+
+model sub_category {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(30)
+  description  String   @db.VarChar(100)
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+  category_id  Int
+
+  // Relations
+  category             category @relation(fields: [category_id], references: [id])
+  sub_category_types   sub_category_type[]
+  products             products[]
+}
+
+model sub_category_type {
+  id           Int      @id @default(autoincrement()) 
+  name         String   @db.VarChar(30)
+  description  String   @db.VarChar(100)
+  category_id  Int
+  sub_category_id Int
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+
+  // Relations
+  category             category @relation(fields: [category_id], references: [id])
+  sub_category         sub_category @relation(fields: [sub_category_id], references: [id])
+  products             products[]
+}
+
+model brand {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(30)
+  description  String   @db.VarChar(100)
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+
+  //Relations
+  products             products[]
+}
+
+model gender {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique @db.VarChar(30)
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+
+  users users[]
+}
+
+model role {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique @db.VarChar(30)
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_deleted   Boolean  @default(false)
+
+  users users[]
+}
+
+model products {
+  id                          Int      @id @default(autoincrement())  //Primary key
+  name                        String   @db.VarChar(30)
+  description                 String   @db.VarChar(100)
+  image                       String[]
+  price                       Decimal
+  discount                    Int?
+  quantity                    Int
+  category_id                 Int                                    //foreign key
+  sub_category_id             Int                                    //foreign key
+  sub_category_type_id        Int                                    //foreign key
+  brand_id                    Int                                    //foreign key
+  create_at                   DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+  is_deleted                  Boolean  @default(false)
+  is_featured                 Boolean  @default(false)
+  views_count                 Int      @default(0)
+
+  // Relations
+  category             category @relation(fields: [category_id], references: [id])
+  sub_category         sub_category @relation(fields: [sub_category_id], references: [id])
+  sub_category_type    sub_category_type @relation(fields: [sub_category_type_id], references: [id])
+  brand                brand @relation(fields: [brand_id], references: [id])
+  ratings              ratings[]
+  wishlist             wishlist[]
+  cart_items           cart_items[]
+
+  @@index([category_id])
+  @@index([brand_id])
+  @@index([is_deleted])
+}
+
+model ratings {
+  id                          Int             @id @default(autoincrement())  //Primary key
+  user_id                     Int 
+  product_id                  Int
+  ratings                     Decimal
+  images                      String[]        @default([])
+  description                 String          @db.VarChar(100)
+  create_at                   DateTime        @default(now())
+  updated_at                  DateTime        @updatedAt
+  is_deleted                  Boolean         @default(false)
+
+  // Relations
+  users             users @relation(fields: [user_id], references: [id])
+  products          products @relation(fields: [product_id], references: [id])
+
+  @@index([user_id, product_id])
+  @@index([is_deleted])
+}
+
+
+model wishlist {
+  id          Int      @id @default(autoincrement())
+  user_id     Int                                   
+  product_id  Int                                   
+  created_at  DateTime @default(now())              
+  is_deleted  Boolean  @default(false)              
+
+  // Relations
+  users       users @relation(fields: [user_id], references: [id])
+  products    products @relation(fields: [product_id], references: [id])
+
+  @@unique([user_id, product_id])
+}
+
+enum CartStatus {
+  ACTIVE
+  ABANDONED
+  CONVERTED_TO_ORDER
+}
+
+model cart {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  is_deleted      Boolean   @default(false)
+  status          CartStatus @default(ACTIVE)
+
+  // Relations
+  user            users     @relation(fields: [user_id], references: [id])
+  items           cart_items[]
+
+  @@unique([user_id, status])
+  @@index([user_id, status])
+}
+
+model cart_items {
+  id              Int       @id @default(autoincrement())
+  cart_id         Int
+  product_id      Int
+  quantity        Int       @default(1)
+  size            String?   @db.VarChar(10)  // For clothing items
+  color           String?   @db.VarChar(20)  // For items with color variants
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  is_deleted      Boolean   @default(false)
+
+  // Relations
+  cart            cart      @relation(fields: [cart_id], references: [id])
+  product         products  @relation(fields: [product_id], references: [id])
+
+  @@unique([cart_id, product_id, size, color])
+  @@index([product_id])
+}

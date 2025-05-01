@@ -1,0 +1,12 @@
+stages:
+  - deploy
+
+deploy_vercel:
+  stage: deploy
+  only:
+    - development # Runs only on merge to development
+  script:
+    - npm install -g vercel
+    - vercel pull --yes --environment=production --token $VERCEL_TOKEN
+    - vercel build --prod --token $VERCEL_TOKEN
+    - vercel deploy --prod --token $VERCEL_TOKEN
