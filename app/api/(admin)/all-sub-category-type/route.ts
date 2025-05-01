@@ -88,6 +88,8 @@ export async function GET(req: Request) {
       status: HttpStatus.OK,
     });
   } catch (error) {
+    console.log(error);
+    
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       {

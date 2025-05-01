@@ -31,14 +31,24 @@ export async function POST(request: NextRequest) {
       successResponse(COMMON_CONSTANTS.SUCCESS, cartItem),
       { status: HttpStatus.OK }
     );
-  } catch (error: any) {
-    console.error("Add to cart error:", error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("Add to cart error:", error);
+      return NextResponse.json(
+        errorResponse(error.message || "Internal Server Error", 
+          error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR),
+        { status: error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR }
+      );
+    }
+  
+    // Handle the case where the error is not an instance of Error (e.g., primitive values)
+    console.error("An unknown error occurred:", error);
     return NextResponse.json(
-      errorResponse(error.message || "Internal Server Error", 
-        error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR),
-      { status: error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR }
+      errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
+      { status: HttpStatus.INTERNAL_SERVER_ERROR }
     );
   }
+  
 }
 
 export async function GET(request: NextRequest) {

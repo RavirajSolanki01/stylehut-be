@@ -4,7 +4,7 @@ import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const data = await categoryService.getAllCategoryData();
     

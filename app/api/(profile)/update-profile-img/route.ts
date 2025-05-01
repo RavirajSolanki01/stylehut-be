@@ -14,6 +14,7 @@ import {
   uploadProfileToCloudinary,
 } from "@/app/utils/helper/couldinary";
 import { profileImgValidation } from "@/app/utils/validationSchema/user";
+import { IncomingMessage } from "http";
 
 const prisma = new PrismaClient();
 
@@ -48,48 +49,46 @@ export const parseForm = async (
       if (done) return this.push(null);
       this.push(value);
     },
-  });
-
-  (stream as any).headers = {
+  }) as Readable & IncomingMessage;
+  
+  stream.headers = {
     "content-type": contentType,
     "content-length": contentLength,
   };
-
+  stream.aborted = false; // Required to satisfy IncomingMessage
+  
   return new Promise((resolve, reject) => {
-    form.parse(stream as any, (err, fields, files) => {
-      if (err) {
-        return reject(err);
-      }
+    form.parse(stream, (err, fields, files) => {
+      if (err) return reject(err);
       resolve({ fields, files });
     });
   });
-};
+}
 
 export async function PUT(req: NextRequest) {
   try {
-    const { userId } = (await verifyToken(req)) as {
-      userId: number;
-    };
+    const { userId } = (await verifyToken(req)) as { userId: number };
 
     const { files } = await parseForm(req);
 
-    const imageFile = Array.isArray(files.profileImg) ? files.profileImg[0] : files.profileImg;
+    const imageFile = Array.isArray(files.profileImg)
+      ? files.profileImg[0]
+      : files.profileImg;
 
     if (!imageFile) {
       return NextResponse.json(
         errorResponse(USER_CONSTANTS.FAIL_TO_UPLOAD_IMAGE, HttpStatus.BAD_REQUEST),
-        {
-          status: HttpStatus.BAD_REQUEST,
-        }
+        { status: HttpStatus.BAD_REQUEST }
       );
     }
 
     const validation = await profileImgValidation(imageFile);
     if (!validation.valid && validation.message) {
       await fs.unlink(imageFile.filepath);
-      return NextResponse.json(errorResponse(validation.message, HttpStatus.BAD_REQUEST), {
-        status: HttpStatus.BAD_REQUEST,
-      });
+      return NextResponse.json(
+        errorResponse(validation.message, HttpStatus.BAD_REQUEST),
+        { status: HttpStatus.BAD_REQUEST }
+      );
     }
 
     const user = await prisma.users.findFirst({
@@ -107,36 +106,40 @@ export async function PUT(req: NextRequest) {
     }
 
     if (user.profile_url) {
-      await removeProfileFromCloudinary(user?.profile_url);
+      await removeProfileFromCloudinary(user.profile_url);
     }
 
     const uploadedUrl = await uploadProfileToCloudinary(imageFile.filepath);
 
     const updateProfile = await prisma.users.update({
-      where: {
-        id: +userId,
-      },
+      where: { id: userId },
       data: {
         profile_url: uploadedUrl,
         updated_at: new Date(),
       },
     });
 
-    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, updateProfile), {
-      status: HttpStatus.OK,
-    });
-  } catch (error: any) {
-    if (error.message.includes("maxTotalFileSize")) {
+    return NextResponse.json(
+      successResponse(COMMON_CONSTANTS.SUCCESS, updateProfile),
+      { status: HttpStatus.OK }
+    );
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof error.message === "string" &&
+      error.message.includes("maxTotalFileSize")
+    ) {
       return NextResponse.json(
         errorResponse(USER_CONSTANTS.FILE_SIZE_VALIDATION_MSG, HttpStatus.BAD_REQUEST),
         { status: HttpStatus.BAD_REQUEST }
       );
     }
+
     return NextResponse.json(
       errorResponse(USER_CONSTANTS.FAIL_TO_UPLOAD_IMAGE, HttpStatus.BAD_REQUEST),
-      {
-        status: HttpStatus.BAD_REQUEST,
-      }
+      { status: HttpStatus.BAD_REQUEST }
     );
   }
 }
