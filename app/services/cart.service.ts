@@ -219,7 +219,7 @@ export const cartService = {
       })
     };
 
-    let orderBy: {};
+    let orderBy: any;
     switch (sortBy) {
       case "user":
         orderBy = { user: { email: order } };
