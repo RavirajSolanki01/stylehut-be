@@ -41,7 +41,6 @@ export const brandService = {
     order: "asc" | "desc" = "desc"
   ) {
     console.log("order by", sortBy, order);
-    const orderBy = { [sortBy]: order };
     const where = {
       is_deleted: false,
       ...(search
