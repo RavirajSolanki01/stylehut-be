@@ -23,10 +23,12 @@ export const brandService = {
         },
       });
     }
+
+    const { id, ...cleanedData } = data;
     
     return await prisma.brand.create({
       data: {
-        ...data,
+        ...cleanedData,
         is_deleted: false,
       },
     });

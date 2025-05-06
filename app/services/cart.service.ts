@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { Decimal } from 'decimal.js';
 import { AddToCartInput, UpdateCartInput, CartQueryInput } from "../utils/validationSchema/cart.validation";
 
@@ -210,7 +210,29 @@ export const cartService = {
             items: {
               some: {
                 product: {
-                  name: { contains: search, mode: "insensitive" as const }
+                  OR: [
+                    {name: { contains: search, mode: "insensitive" as const }},
+                    {
+                      category: {
+                        name: { contains: search, mode: "insensitive" as const }
+                      }
+                    },
+                    {
+                      sub_category: {
+                        name: { contains: search, mode: "insensitive" as const }
+                      }
+                    },
+                    {
+                      sub_category_type: {
+                        name: { contains: search, mode: "insensitive" as const }
+                      }
+                    },
+                    {
+                      brand: {
+                        name: { contains: search, mode: "insensitive" as const }
+                      }
+                    },
+                  ]
                 }
               }
             }
@@ -219,26 +241,16 @@ export const cartService = {
       })
     };
 
-    let orderBy: any;
+    let orderBy: Prisma.cartOrderByWithRelationInput;
     switch (sortBy) {
-      case "user":
+      case "userEmail":
         orderBy = { user: { email: order } };
         break;
-      case "category":
-        orderBy = { items: {some: {
-          product: {
-            name: { contains: search, mode: "insensitive" as const }
-          }
-        }}};
+      case "userName":
+        orderBy = { user: { first_name: order } };
         break;
-      case "brand":
-        orderBy = { brand: { name: order } };
-        break;
-      case "sub_category":
-        orderBy = { sub_category: { name: order } };
-        break;
-      case "sub_category_type":
-        orderBy = { sub_category_type: { name: order } };
+      case "count":
+        orderBy = { items: { _count: order } };
         break;
       default:
         orderBy = { [sortBy]: order };
@@ -247,7 +259,7 @@ export const cartService = {
     const [data, total] = await Promise.all([
       prisma.cart.findMany({
         where,
-        orderBy: { [sortBy]: order },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
@@ -293,7 +305,155 @@ export const cartService = {
       }, 0)
     }));
 
+    const sortedData = cartsWithTotals.sort((a, b) => {
+      switch (sortBy) {
+        case "amount":
+          return order === "desc" 
+          ? b.totalAmount - a.totalAmount
+          : a.totalAmount - b.totalAmount;
+        default:
+          return 0;
+      }
+    });
 
-    return { data: cartsWithTotals, total };
+    return { data: sortedData, total };
+  },
+
+  async getAllCartsItemsForAdmin(params: CartQueryInput) {
+    const {
+      page = 1,
+      pageSize = 10,
+      search = "",
+      sortBy = "created_at",
+      order = "desc"
+    } = params;
+  
+    // First get the grouped data using Prisma's groupBy
+    const groupedItems = await prisma.cart_items.groupBy({
+      by: ['product_id'],
+      where: {
+        is_deleted: false,
+        ...(search && {
+          OR: [
+            {
+              product: {
+                OR: [
+                  { name: { contains: search, mode: "insensitive" as const } },
+                  { description: { contains: search, mode: "insensitive" as const } },
+                  { category: { name: { contains: search, mode: "insensitive" as const } } },
+                  { sub_category: { name: { contains: search, mode: "insensitive" as const } } },
+                  { sub_category_type: { name: { contains: search, mode: "insensitive" as const } } },
+                  { brand: { name: { contains: search, mode: "insensitive" as const } } }
+                ]
+              }
+            }
+          ]
+        })
+      },
+      _sum: {
+        quantity: true
+      },
+      _count: {
+        cart_id: true
+      }
+    });
+  
+    // Get total count for pagination
+    const total = groupedItems.length;
+  
+    // Get detailed product information for the paginated subset
+    const paginatedProductIds = groupedItems
+      .slice((page - 1) * pageSize, page * pageSize)
+      .map(item => item.product_id);
+  
+    const detailedProducts = await prisma.products.findMany({
+      where: {
+        id: {
+          in: paginatedProductIds
+        }
+      },
+      include: {
+        category: true,
+        sub_category: true,
+        sub_category_type: true,
+        brand: true,
+        cart_items: {
+          where: {
+            is_deleted: false
+          },
+          include: {
+            cart: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    first_name: true,
+                    last_name: true,
+                    email: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  
+    // Format the response
+    const formattedData = detailedProducts.map(product => {
+      const groupedItem = groupedItems.find(item => item.product_id === product.id);
+      const totalQuantity = groupedItem?._sum.quantity || 0;
+      const uniqueUsers = groupedItem?._count.cart_id || 0;
+  
+      // Get unique users who added this product
+      const users = [...new Set(product.cart_items.map(item => item.cart.user))];
+  
+      return {
+        product: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          discount: product.discount,
+          image: product.image,
+          category: product.category,
+          sub_category: product.sub_category,
+          sub_category_type: product.sub_category_type,
+          brand: product.brand
+        },
+        total_quantity: totalQuantity,
+        unique_users_count: uniqueUsers,
+        users: users,
+        total_amount: Number(product.price) * (1 - (product.discount || 0) / 100) * totalQuantity
+      };
+    });
+  
+    // Apply sorting
+    const sortedData = formattedData.sort((a, b) => {
+      switch (sortBy) {
+        case "product":
+          return order === "desc" 
+            ? b.product.name.localeCompare(a.product.name)
+            : a.product.name.localeCompare(b.product.name);
+        case "quantity":
+          return order === "desc"
+            ? b.total_quantity - a.total_quantity
+            : a.total_quantity - b.total_quantity;
+        case "amount":
+          return order === "desc"
+            ? b.total_amount - a.total_amount
+            : a.total_amount - b.total_amount;
+        case "users":
+          return order === "desc"
+            ? b.unique_users_count - a.unique_users_count
+            : a.unique_users_count - b.unique_users_count;
+        default:
+          return 0;
+      }
+    });
+  
+    return {
+      data: sortedData,
+      total
+    };
   }
 };

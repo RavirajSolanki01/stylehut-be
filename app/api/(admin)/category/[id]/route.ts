@@ -169,13 +169,11 @@ export async function PUT(req: Request, { params }: getCategoryParams) {
       );
     }
 
-    const isNameExist = await checkNameConflict(name, "category", { excludeId: categoryExit.id });
-
-    if (isNameExist) {
-      return NextResponse.json(
-        errorResponse(CATEGORY_CONSTANTS.SAME_NAME_ERROR, HttpStatus.BAD_REQUEST),
-        { status: HttpStatus.BAD_REQUEST }
-      );
+    const nameExist = await checkNameConflict(name, "category", { excludeId: categoryExit.id });
+    if (nameExist.hasSameName && nameExist.message) {
+      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const updatedCategory = await prisma.category.update({

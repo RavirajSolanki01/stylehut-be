@@ -6,7 +6,7 @@ import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const categories = await prisma.category.findMany({
       where: {
@@ -18,7 +18,6 @@ export async function GET() {
       status: HttpStatus.OK,
     });
   } catch (error) {
-    console.log(error);
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       {

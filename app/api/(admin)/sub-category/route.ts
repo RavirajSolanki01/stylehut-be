@@ -40,14 +40,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const isNameExist = await checkNameConflict(name, "sub_category", {
+    const nameExist = await checkNameConflict(name, "sub_category", {
       category_id: categoryId,
     });
-    if (isNameExist) {
-      return NextResponse.json(
-        errorResponse(SUB_CATEGORY_CONSTANTS.SAME_NAME_ERROR, HttpStatus.BAD_REQUEST),
-        { status: HttpStatus.BAD_REQUEST }
-      );
+    if (nameExist.hasSameName && nameExist.message) {
+      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const subCategory = await prisma.sub_category.create({

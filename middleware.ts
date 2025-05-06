@@ -50,9 +50,10 @@ export async function middleware(req: NextRequest) {
     /^\/api\/sub-category-type(?:\/.*)?$/,
     /^\/api\/brand(?:\/.*)?$/,
     /^\/api\/product(?:\/.*)?$/,
-    /^\/api\/rating(?:\/.*)?$/
+    /^\/api\/rating(?:\/.*)?$/,
+    /^\/api\/search(?:\/.*)?$/,
   ];
-  
+
   // Define protected routes
   const protectedRoutes = [
     "/api/orders",
@@ -61,7 +62,9 @@ export async function middleware(req: NextRequest) {
     "/api/update-profile-img",
     "/api/gender",
     "/^\/api\/gender(\/.*)?$/",
-    
+    "/api/address",
+    "/^\/api\/address(\/.*)?$/",
+
     "/api/category-list",
     "/api/category",
     "/^\/api\/category(\/.*)?$/",
@@ -69,13 +72,13 @@ export async function middleware(req: NextRequest) {
     "/^\/api\/sub-category(\/.*)?$/",
     "/api/brand",
     "/^\/api\/brand(\/.*)?$/",
-    
+
     "/api/product",
     "/^\/api\/product(\/.*)?$/",
-    
+
     "/api/rating",
     "/^\/api\/rating(\/.*)?$/",
-    
+
     "/api/wishlist",
     "/^\/api\/wishlist(\/.*)?$/",
 
@@ -84,7 +87,7 @@ export async function middleware(req: NextRequest) {
   ];
 
   // Check if it's a GET request and matches public patterns
-  if (method === 'GET' && publicGetPatterns.some(pattern => pattern.test(path))) {
+  if (method === "GET" && publicGetPatterns.some(pattern => pattern.test(path))) {
     return NextResponse.next();
   }
 

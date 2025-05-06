@@ -21,12 +21,11 @@ export async function POST(req: NextRequest) {
 
     const { name, description } = body;
 
-    const isNameExist = await checkNameConflict(name, "category");
-    if (isNameExist) {
-      return NextResponse.json(
-        errorResponse(CATEGORY_CONSTANTS.SAME_NAME_ERROR, HttpStatus.BAD_REQUEST),
-        { status: HttpStatus.BAD_REQUEST }
-      );
+    const nameExist = await checkNameConflict(name, "category");
+    if (nameExist.hasSameName && nameExist.message) {
+      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const category = await prisma.category.create({

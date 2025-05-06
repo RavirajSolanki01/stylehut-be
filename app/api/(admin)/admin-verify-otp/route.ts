@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     // Generate Auth Token (JWT)
     const token = jwt.sign(
-      { userId: user.id, email: user.email }, // Payload
+      { userId: user.id, email: user.email, role: user.role_id }, // Payload
       process.env.JWT_SECRET!, // Secret Key
       { expiresIn: "7d" } // Token Expiry
     );

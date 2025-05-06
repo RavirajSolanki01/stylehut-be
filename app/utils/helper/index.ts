@@ -11,13 +11,15 @@ export const checkNameConflict = async (
     sub_category_id?: number;
     excludeId?: number;
   } = {}
-): Promise<boolean> => {
-  const checks: Promise<boolean>[] = [];
+): Promise<{ hasSameName: boolean; message?: string }> => {
+  const checks: Promise<{ found: boolean; model: string }>[] = [];
   const trimmedName = name.trim();
 
   // Helper to build a generic query
-  // @ts-ignore
-  const buildQuery = async (table: ModelName, where: Record<string, any>): Promise<boolean> => {
+  const buildQuery = async (
+    table: ModelName,
+    where: Record<string, any>
+  ): Promise<{ found: boolean; model: string }> => {
     const result = await (prisma[table] as any).findFirst({
       where: {
         name: {
@@ -28,7 +30,10 @@ export const checkNameConflict = async (
         ...where,
       },
     });
-    return !!result;
+    return {
+      found: !!result,
+      model: table,
+    };
   };
 
   const { category_id, sub_category_id, excludeId } = options;
@@ -86,5 +91,15 @@ export const checkNameConflict = async (
   }
 
   const results = await Promise.all(checks);
-  return results.some(Boolean);
+  const conflict = results.find(res => res.found);
+  return {
+    hasSameName: !!conflict,
+    message: conflict
+      ? `Name already exists in ${formatModelName(conflict.model)}. Please choose a different name`
+      : undefined,
+  };
+};
+
+const formatModelName = (model: string): string => {
+  return model.split("_").join(" ");
 };

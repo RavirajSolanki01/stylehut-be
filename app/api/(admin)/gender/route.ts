@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   if (authResponse) return authResponse;
 
   const validation = await validateRequest(createGenderSchema)(request);
-  if ("status" in validation) {
+  if ('status' in validation) {
     return validation;
   }
 
@@ -23,16 +23,13 @@ export async function POST(request: NextRequest) {
       { message: COMMON_CONSTANTS.SUCCESS, data: gender },
       { status: HttpStatus.OK }
     );
-  } catch (error: unknown) {
-    if (typeof error === "object" && error !== null && "code" in error) {
-      const knownError = error as { code: string };
-      if (knownError.code === "P2002") {
-        return NextResponse.json(errorResponse("Gender already exists", HttpStatus.CONFLICT), {
-          status: HttpStatus.CONFLICT,
-        });
-      }
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        errorResponse("Gender already exists", HttpStatus.CONFLICT),
+        { status: HttpStatus.CONFLICT }
+      );
     }
-
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }
@@ -63,8 +60,6 @@ export async function GET(request: NextRequest) {
       { status: HttpStatus.OK }
     );
   } catch (error) {
-    console.log(error);
-    
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }
