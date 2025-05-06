@@ -1,4 +1,3 @@
-import { NextApiRequest } from "next";
 import { NextRequest, NextResponse } from "next/server";
 import { HttpStatus } from "../enums/httpStatusCode";
 import { jwtVerify } from "jose";
@@ -29,6 +28,7 @@ export const verifyToken = async (req: NextRequest) => {
     const { payload } = await jwtVerify(token, secret);
     return payload;
   } catch (err) {
+    console.log(err)
     return NextResponse.json(
       { message: "Unauthorized: Invalid token" },
       { status: HttpStatus.UNAUTHORIZED }

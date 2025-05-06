@@ -76,7 +76,7 @@ export const cartService = {
     });
   },
 
-  async getCart(userId: number, params?: CartQueryInput) {
+  async getCart(userId: number) {
     const cart = await prisma.cart.findFirst({
       where: { user_id: userId, status: 'ACTIVE', is_deleted: false },
       include: {
