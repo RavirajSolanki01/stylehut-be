@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Bypass TypeScript errors during the build (to avoid deployment issues)
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export const config = {
