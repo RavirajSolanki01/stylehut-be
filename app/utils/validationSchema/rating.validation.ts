@@ -11,7 +11,7 @@ export const createRatingSchema = z.object({
   description: z.string({
     required_error: "Description is required",
   }).min(10, "Description must be at least 10 characters")
-    .max(100, "Description must not exceed 100 characters"),
+    .max(1024, "Description must not exceed 1024 characters"),
   images: z.array(z.any()).optional(),
 });
 

@@ -10,7 +10,7 @@ import { validateRequest } from "@/app/middleware/validateRequest";
 import { checkNameConflict } from "@/app/utils/helper";
 
 export async function POST(request: NextRequest) {
-  
+
   const authResponse = await checkAdminRole(request);
   if (authResponse) return authResponse;
 
@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const isNameExist = await checkNameConflict(validation.validatedData.name, "brand");
-    if (isNameExist) {
-      return NextResponse.json(
-        errorResponse("Brand name already exists.", HttpStatus.BAD_REQUEST),
-        { status: HttpStatus.BAD_REQUEST }
-      );
+    const nameExist = await checkNameConflict(validation.validatedData.name, "brand");
+
+    if (nameExist.hasSameName && nameExist.message) {
+      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const brand = await brandService.createBrand(validation.validatedData as CreateBrandDto);
@@ -77,3 +77,4 @@ export async function GET(req: Request) {
     );
   }
 }
+ 

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { CreateProductDto, UpdateProductDto } from "../types/product.types";
+import { ProductOrderBy, ProductInclude, ProductWithRelations, FormattedProduct, RatingStats } from "../types/rating.types";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/app/utils/cloudinary";
 import { File } from 'formidable';
 import type { ProductQueryInput } from "../utils/validationSchema/product.validation";
@@ -36,7 +37,7 @@ export const productService = {
     }
   },
 
-  async getAllProducts(params: ProductQueryInput) {
+  async getAllProducts(params: ProductQueryInput, userId?: any) {
     const {
       page = 1,
       pageSize = 10,
@@ -52,7 +53,7 @@ export const productService = {
       maxPrice,
     } = params;
 
-    let orderBy: any;
+    let orderBy: ProductOrderBy;
     switch (sortBy) {
       case "category":
         orderBy = { category: { name: order } };
@@ -170,24 +171,87 @@ export const productService = {
       };
     }
 
+    let include: ProductInclude = {
+      category: true,
+      sub_category: true,
+      sub_category_type: true,
+      brand: true,
+      ratings: {
+        where: { is_deleted: false }
+      },
+    };
+
+    if(userId) {
+      include = {
+        ...include,
+        wishlist: {
+          where: {
+            user_id: Number(userId),
+            is_deleted: false
+          }
+        },
+        cart_items: {
+          where: { 
+            is_deleted: false,
+            cart: {
+              user_id: Number(userId),
+              is_deleted: false
+            }
+          }
+        }
+      };
+    }
+
     const [data, total] = await Promise.all([
       prisma.products.findMany({
         where,
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
-          brand: true,
-          ratings: true, // Include ratings to calculate average
-        },
+        include,
       }),
       prisma.products.count({ where }),
     ]);
 
-    return { data, total };
+    const formattedData = data.map((product: ProductWithRelations):FormattedProduct => {
+      const ratings = product.ratings || [];
+
+      // Calculate average rating
+      const averageRating = ratings.length > 0
+        ? ratings.reduce((acc, curr) => acc + Number(curr.ratings), 0) / ratings.length
+        : 0;
+  
+      // Get rating distribution
+      const ratingDistribution: RatingStats['distribution'] = {
+        1: 0,
+        2: 0,
+        3: 0,
+        4: 0,
+        5: 0
+      };
+  
+      product.ratings.forEach(rating => {
+        ratingDistribution[Number(rating.ratings) as keyof typeof ratingDistribution]++;
+      });
+
+      let formattedProduct: FormattedProduct = {
+        ...product,
+        ratingStats: {
+          averageRating,
+          totalRatings: product.ratings.length,
+          distribution: ratingDistribution
+        },
+      };
+
+      if (userId) {
+        formattedProduct.isInCart = (product?.cart_items?.length || 0) > 0;
+        formattedProduct.isInWishlist = (product?.wishlist?.length || 0) > 0;
+      }
+
+      return formattedProduct;
+    });
+
+    return { data: formattedData, total };
   },
 
   async getProductById(id: number) {

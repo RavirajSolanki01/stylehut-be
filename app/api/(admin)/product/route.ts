@@ -11,7 +11,7 @@ import { parseForm } from "@/app/utils/helper/formDataParser";
 import { createProductSchema, productQuerySchema } from "@/app/utils/validationSchema/product.validation";
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
-
+import { FormattedProduct } from "@/app/types/rating.types";
 // Configure Next.js to handle file uploads
 export const config = {
   api: {
@@ -101,6 +101,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const userId = request.headers.get('x-user-id');
+  
   try {
     const { searchParams } = new URL(request.url);
 
@@ -120,12 +122,12 @@ export async function GET(request: NextRequest) {
       maxPrice: searchParams.get("maxPrice") || "0",
     });
 
-    const { data, total } = await productService.getAllProducts(validatedQuery);
+    const { data, total } = await productService.getAllProducts(validatedQuery, userId);
 
     return NextResponse.json(
       paginatedResponse(
         COMMON_CONSTANTS.SUCCESS,
-        data,
+        data as FormattedProduct[],
         validatedQuery.page,
         validatedQuery.pageSize,
         total

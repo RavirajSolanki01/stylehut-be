@@ -4,10 +4,10 @@ import { z } from 'zod';
 export const createBrandSchema = z.object({
   name: z.string()
     .min(2, 'Name must be at least 2 characters')
-    .max(30, 'Name must not exceed 30 characters'),
+    .max(40, 'Name must not exceed 40 characters'),
   description: z.string()
     .min(10, 'Description must be at least 10 characters')
-    .max(100, 'Description must not exceed 100 characters'),
+    .max(1024, 'Description must not exceed 1024 characters'),
 });
 
 // Brand update schema

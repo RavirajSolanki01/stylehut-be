@@ -86,11 +86,6 @@ export async function middleware(req: NextRequest) {
     "/^\/api\/wishlist(\/.*)?$/",
   ];
 
-  // Check if it's a GET request and matches public patterns
-  if (method === "GET" && publicGetPatterns.some(pattern => pattern.test(path))) {
-    return NextResponse.next();
-  }
-
   if (req.method === "OPTIONS") {
     return NextResponse.json(
       {},
@@ -128,12 +123,18 @@ export async function middleware(req: NextRequest) {
     const authHeader = req.headers.get("Authorization");
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        errorResponse("Unauthorized: No token provided", HttpStatus.UNAUTHORIZED),
-        {
-          status: HttpStatus.UNAUTHORIZED,
-        }
-      );
+      // Check if it's a GET request and matches public patterns
+      if (method === "GET" && publicGetPatterns.some(pattern => pattern.test(path))) {
+        return NextResponse.next();
+      }
+      else {
+        return NextResponse.json(
+          errorResponse("Unauthorized: No token provided", HttpStatus.UNAUTHORIZED),
+          {
+            status: HttpStatus.UNAUTHORIZED,
+          }
+        );
+      }
     }
 
     try {
