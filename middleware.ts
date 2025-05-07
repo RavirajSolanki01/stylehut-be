@@ -84,6 +84,9 @@ export async function middleware(req: NextRequest) {
 
     "/api/cart",
     "/^\/api\/wishlist(\/.*)?$/",
+
+    "/api/coupon",
+    "/^\/api\/coupon(\/.*)?$/",
   ];
 
   if (req.method === "OPTIONS") {

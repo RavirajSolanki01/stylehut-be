@@ -41,6 +41,8 @@ model users {
   address      address[]
   cart         cart[]
   
+
+  coupon_usage coupon_usage[]
 }
 
 enum AddressType {
@@ -257,3 +259,27 @@ model cart_items {
   @@unique([cart_id, product_id, size, color])
   @@index([product_id])
 }
+
+model coupon {
+  id Int @id @default(autoincrement())
+  code String @db.VarChar(20)
+  discount Decimal
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  coupon_usage coupon_usage[]
+}
+
+model coupon_usage {
+  id Int @id @default(autoincrement())
+  coupon_id Int
+  user_id Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  is_deleted Boolean @default(false)
+
+  // Relations
+  coupon coupon @relation(fields: [coupon_id], references: [id])
+  user users @relation(fields: [user_id], references: [id])
+}
+
