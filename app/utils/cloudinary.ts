@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import fs from 'fs/promises';
 
 cloudinary.config({
@@ -7,12 +7,25 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadToCloudinary = async (filePath: string) => {
+export const uploadToCloudinary = async (
+  filePath: string, 
+  options: {
+    folder?: string;
+    filename?: string;
+    resourceType?: "auto" | "image" | "video" | "raw" | undefined;
+  } = {}
+) => {
   try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder: 'products',
+
+    // Set default options
+    const uploadOptions = {
+      folder: options.folder || 'products',
       use_filename: true,
-    });
+      resource_type: options.resourceType || 'auto',
+      ...(options.filename && { public_id: options.filename }),
+    };
+
+    const result = await cloudinary.uploader.upload(filePath, uploadOptions);
     
     // Clean up temporary file
     await fs.unlink(filePath);
@@ -26,10 +39,9 @@ export const uploadToCloudinary = async (filePath: string) => {
   }
 };
 
-
-export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
+export const deleteFromCloudinary = async (publicId: string, folder: string = 'products'): Promise<void> => {
   try {
-    await cloudinary.uploader.destroy(`products/${publicId}`);
+    await cloudinary.uploader.destroy(`${folder}/${publicId}`);
   } catch (error) {
     console.error('Cloudinary delete error:', error);
     throw new Error('Failed to delete image');
@@ -37,7 +49,7 @@ export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
 };
 
 // Helper function to extract public ID from Cloudinary URL
-export const getPublicIdFromUrl = (url: string): string | null => {
+export const getPublicIdFromUrl = (url: string, folder: string = 'products'): string | null => {
   try {
     // Extract the file name without extension
     const matches = url.match(/\/products\/([^/]+)\./);

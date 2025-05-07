@@ -9,11 +9,11 @@ export function addCategoryValidation(data: addCategoryPayload) {
     return { valid: false, message: CATEGORY_CONSTANTS.NAME_DESCRIPTION_VALIDATION };
   }
 
-  if (name.length > 30) {
+  if (name.length > 40) {
     return { valid: false, message: CATEGORY_CONSTANTS.NAME_LENGTH_VALIDATION };
   }
 
-  if (description.length > 100) {
+  if (description.length > 1024) {
     return {
       valid: false,
       message: CATEGORY_CONSTANTS.DESCRIPTION_LENGTH_VALIDATION,
@@ -35,12 +35,12 @@ export const createCategorySchema = z.object({
     .string()
     .trim()
     .min(1, { message: CATEGORY_CONSTANTS.NAME_DESCRIPTION_VALIDATION })
-    .max(30, { message: CATEGORY_CONSTANTS.NAME_LENGTH_VALIDATION }),
+    .max(40, { message: CATEGORY_CONSTANTS.NAME_LENGTH_VALIDATION }),
   description: z
     .string()
     .trim()
     .min(1, { message: CATEGORY_CONSTANTS.NAME_DESCRIPTION_VALIDATION })
-    .max(100, { message: CATEGORY_CONSTANTS.DESCRIPTION_LENGTH_VALIDATION }),
+    .max(1024, { message: CATEGORY_CONSTANTS.DESCRIPTION_LENGTH_VALIDATION }),
 });
 
 export const categoryIdSchema = z

@@ -7,6 +7,7 @@ import { errorResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { createBrandSchema } from "@/app/utils/validationSchema/brand.validation";
 import { validateRequest } from "@/app/middleware/validateRequest";
+import { checkNameConflict } from "@/app/utils/helper";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -38,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: Props) {
   // Check admin authorization
   const authResponse = await checkAdminRole(request);
   if (authResponse) return authResponse;
-  
+
   const validation = await validateRequest(createBrandSchema)(request);
   if ('status' in validation) {
     return validation;
@@ -46,6 +47,14 @@ export async function PUT(request: NextRequest, { params }: Props) {
 
   try {
     const { id } = await params;
+    const nameExist = await checkNameConflict(validation.validatedData.name, "brand");
+
+    if (nameExist.hasSameName && nameExist.message) {
+      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+        status: HttpStatus.BAD_REQUEST,
+      });
+    }
+
     const brand = await brandService.updateBrand(Number(id), validation.validatedData as UpdateBrandDto);
     return NextResponse.json(
       { message: COMMON_CONSTANTS.SUCCESS, data: brand },
@@ -60,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: Props) {
         { status: HttpStatus.CONFLICT }
       );
     }
-    
+
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }
@@ -86,3 +95,4 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     );
   }
 }
+ 

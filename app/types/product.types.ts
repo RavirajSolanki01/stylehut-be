@@ -11,9 +11,7 @@ export interface CreateProductDto {
   brand_id: number;
 }
 
-export interface UpdateProductDto extends Partial<CreateProductDto> {
-  id: number
-}
+export interface UpdateProductDto extends Partial<CreateProductDto> {}
 
 export interface ProductResponse extends CreateProductDto {
   id: number;

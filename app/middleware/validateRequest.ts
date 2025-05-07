@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ZodSchema } from 'zod';
 import { errorResponse } from '../utils/apiResponse';
 import { HttpStatus } from '../utils/enums/httpStatusCode';
