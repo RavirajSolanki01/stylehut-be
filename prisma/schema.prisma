@@ -266,6 +266,7 @@ model coupon {
   discount Decimal
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  is_active Boolean @default(true)
 
   coupon_usage coupon_usage[]
 }
