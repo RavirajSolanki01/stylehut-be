@@ -10,6 +10,8 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+
+
 export async function PUT(request: NextRequest, { params }: Props) {
   const authResponse = await checkAdminRole(request);
 
@@ -25,6 +27,16 @@ export async function PUT(request: NextRequest, { params }: Props) {
     const { validatedData } = validation;
 
     const { id } = await params;
+
+    const existingCoupon = await couponService.getCouponByCode(validatedData.coupon_code, Number(id));
+    if (existingCoupon) {
+      return NextResponse.json(
+        errorResponse("Coupon code already exists", HttpStatus.CONFLICT),
+        { status: HttpStatus.CONFLICT }
+      );
+    }
+    
+
     const coupon = await couponService.updateCoupon(Number(id), validatedData);
 
     return NextResponse.json(
