@@ -74,4 +74,21 @@ export const userService = {
       select: { name: true },
     });
   },
+
+  async getUserById(id: number) {
+    return prisma.users.findUnique({
+      where: { id, is_deleted: false },
+    });
+  },
+
+  async exists(id?: string | number): Promise<boolean> {
+    if (!id) return false;
+    const count = await prisma.category.count({
+      where: {
+        id: Number(id),
+        is_deleted: false
+      }
+    });
+    return count > 0;
+  },
 };

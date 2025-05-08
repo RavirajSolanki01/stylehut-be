@@ -455,5 +455,136 @@ export const cartService = {
       data: sortedData,
       total
     };
+  },
+
+  async addWishlistItemsToCart(userId: number) {
+    // Get active wishlisted items
+    const wishlistedItems = await prisma.wishlist.findMany({
+      where: {
+        user_id: userId,
+        is_deleted: false
+      },
+      include: {
+        products: {
+          select: {
+            id: true,
+            quantity: true
+          }
+        }
+      }
+    });
+
+    if (!wishlistedItems.length) {
+      throw new Error('No items found in wishlist');
+    }
+
+    // Get or create active cart
+    let cart = await prisma.cart.findFirst({
+      where: { user_id: userId, status: 'ACTIVE', is_deleted: false }
+    });
+
+    if (!cart) {
+      cart = await prisma.cart.create({
+        data: { user_id: userId, status: 'ACTIVE' }
+      });
+    }
+
+    // Add each wishlisted item to cart
+    const cartItemPromises = wishlistedItems.map(async (item) => {
+      // Check if item already exists in cart
+      const existingCartItem = await prisma.cart_items.findFirst({
+        where: {
+          cart_id: cart.id,
+          product_id: item.product_id,
+          is_deleted: false
+        }
+      });
+
+      if (existingCartItem) {
+        // Update quantity if item exists
+        return prisma.cart_items.update({
+          where: { id: existingCartItem.id },
+          data: { quantity: existingCartItem.quantity + 1 }
+        });
+      }
+
+      // Create new cart item
+      return prisma.cart_items.create({
+        data: {
+          cart_id: cart.id,
+          product_id: item.product_id,
+          quantity: 1
+        }
+      });
+    });
+
+    await Promise.all(cartItemPromises);
+
+    return this.getCart(userId);
+  },
+
+  async moveCartItemsToWishlist(userId: number) {
+    // Get active cart items
+    const cart = await prisma.cart.findFirst({
+      where: { 
+        user_id: userId, 
+        status: 'ACTIVE', 
+        is_deleted: false 
+      },
+      include: {
+        items: {
+          where: { is_deleted: false }
+        }
+      }
+    });
+
+    if (!cart || !cart.items.length) {
+      throw new Error('No items found in cart');
+    }
+
+    // Add each cart item to wishlist
+    const wishlistPromises = cart.items.map(async (item) => {
+      // Check if item already exists in wishlist
+      const existingWishlistItem = await prisma.wishlist.findUnique({
+        where: {
+          user_id_product_id: {
+            user_id: userId,
+            product_id: item.product_id
+          }
+        }
+      });
+
+      if (existingWishlistItem) {
+        // Restore if soft deleted
+        if (existingWishlistItem.is_deleted) {
+          return prisma.wishlist.update({
+            where: { id: existingWishlistItem.id },
+            data: { is_deleted: false }
+          });
+        }
+        return existingWishlistItem;
+      }
+
+      // Create new wishlist item
+      return prisma.wishlist.create({
+        data: {
+          user_id: userId,
+          product_id: item.product_id
+        }
+      });
+    });
+
+    // Soft delete all cart items
+    await prisma.cart_items.updateMany({
+      where: {
+        cart_id: cart.id,
+        is_deleted: false
+      },
+      data: { is_deleted: true }
+    });
+
+    await Promise.all(wishlistPromises);
+
+    return true;
   }
 };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { wishlistService } from "@/app/services/wishlist.service";
+import { userService } from "@/app/services/user.service";
 import { createWishlistSchema, wishlistQuerySchema } from "@/app/utils/validationSchema/wishlist.validation";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
@@ -25,8 +26,16 @@ export async function POST(request: NextRequest) {
       { status: HttpStatus.UNAUTHORIZED }
     );
   }
-
   try {
+
+    // Add user validation
+    if (!(await userService.exists(Number(userId)))) {
+      return NextResponse.json(
+        errorResponse("User not found or deactivated", HttpStatus.UNAUTHORIZED),
+        { status: HttpStatus.UNAUTHORIZED }
+      );
+    }
+
     const validation = await validateRequest(createWishlistSchema)(request);
     if ('status' in validation) {
       return validation;
@@ -45,6 +54,7 @@ export async function POST(request: NextRequest) {
       { status: HttpStatus.OK }
     );
   } catch (error) {
+  console.log("🚀 ~ POST ~ error:", error)
 
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(

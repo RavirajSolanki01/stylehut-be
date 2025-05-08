@@ -4,6 +4,7 @@ export const createWishlistSchema = z.object({
   product_id: z.number({
     required_error: "Product ID is required"
   }).positive("Product ID must be positive"),
+  isSoftAdd: z.boolean().optional(),
 });
 
 export const wishlistQuerySchema = z.object({
