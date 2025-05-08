@@ -80,7 +80,34 @@ export const cartService = {
     const cart = await prisma.cart.findFirst({
       where: { user_id: userId, status: 'ACTIVE', is_deleted: false },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            mobile: true,
+            address: {
+              where: { 
+                is_deleted: false,
+                is_default: true 
+              },
+              select: {
+                id: true,
+                full_name: true,
+                phone: true,
+                address_line1: true,
+                address_line2: true,
+                city: true,
+                state: true,
+                postal_code: true,
+                address_type: true,
+                is_open_saturday: true,
+                is_open_sunday: true
+              }
+            }
+          }
+        },
         items: {
           where: { is_deleted: false },
           include: {
@@ -98,7 +125,13 @@ export const cartService = {
     });
 
     if (!cart) {
-      return { items: [], total: 0, totalAmount: 0 };
+      return { 
+        items: [], 
+        total: 0, 
+        totalAmount: 0,
+        user: null,
+        defaultAddress: null
+      };
     }
 
     const totalAmount = cart.items.reduce((sum, item) => {
@@ -119,6 +152,7 @@ export const cartService = {
         email: cart.user.email,
         mobile: cart.user.mobile
       },
+      defaultAddress: cart.user.address[0] || null,
       items: cart.items,
       total: cart.items.length,
       totalAmount
