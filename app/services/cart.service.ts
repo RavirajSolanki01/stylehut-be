@@ -491,11 +491,12 @@ export const cartService = {
     };
   },
 
-  async addWishlistItemsToCart(userId: number) {
+  async addWishlistItemsToCart(userId: number, productIds: number[]) {
     // Get active wishlisted items
     const wishlistedItems = await prisma.wishlist.findMany({
       where: {
         user_id: userId,
+        product_id: { in: productIds },
         is_deleted: false
       },
       include: {
@@ -510,6 +511,14 @@ export const cartService = {
 
     if (!wishlistedItems.length) {
       throw new Error('No items found in wishlist');
+    }
+
+    // Verify all requested products exist in wishlist
+    const foundProductIds = wishlistedItems.map(item => item.product_id);
+    const missingProductIds = productIds.filter(id => !foundProductIds.includes(id));
+    
+    if (missingProductIds.length) {
+      throw new Error(`Products not found in wishlist: ${missingProductIds.join(', ')}`);
     }
 
     // Get or create active cart
