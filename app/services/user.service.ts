@@ -83,7 +83,7 @@ export const userService = {
 
   async exists(id?: string | number): Promise<boolean> {
     if (!id) return false;
-    const count = await prisma.category.count({
+    const count = await prisma.users.count({
       where: {
         id: Number(id),
         is_deleted: false
