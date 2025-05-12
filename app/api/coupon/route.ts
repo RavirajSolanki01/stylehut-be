@@ -33,6 +33,10 @@ export async function POST(request: NextRequest) {
     const coupon = await couponService.createCoupon({
       coupon_code: validatedData.coupon_code,
       discount: validatedData.discount,
+      min_order_amount: validatedData.min_order_amount,
+      discount_text: validatedData.discount_text,
+      max_savings_amount: validatedData.max_savings_amount,
+      expiry_date: validatedData.expiry_date,
       is_active: validatedData.is_active
     });
     
