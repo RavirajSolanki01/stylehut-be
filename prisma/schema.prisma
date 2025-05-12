@@ -262,12 +262,17 @@ model cart_items {
 
 model coupon {
   id Int @id @default(autoincrement())
-  code String @db.VarChar(20)
+  code String @db.VarChar(30)
   discount Decimal
+  discount_text String @db.VarChar(50)
+  min_order_amount Decimal
+  max_savings_amount Decimal
+  expiry_date DateTime
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   is_active Boolean @default(true)
 
+  // Relations
   coupon_usage coupon_usage[]
 }
 
