@@ -3,6 +3,8 @@ import { cartService } from "@/app/services/cart.service";
 import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
+import { addWishlistToCartSchema } from "@/app/utils/validationSchema/cart.validation";
+import { validateRequest } from "@/app/middleware/validateRequest";
 
 // Add all wishlisted items to cart
 export async function POST(request: NextRequest) {
@@ -15,7 +17,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const cart = await cartService.addWishlistItemsToCart(Number(userId));
+    const validation = await validateRequest(addWishlistToCartSchema)(request);
+    if ('status' in validation) {
+      return validation;
+    }
+
+    const cart = await cartService.addWishlistItemsToCart(
+      Number(userId),
+      validation.validatedData.product_ids
+    );
 
     return NextResponse.json(
       successResponse(COMMON_CONSTANTS.SUCCESS, cart),

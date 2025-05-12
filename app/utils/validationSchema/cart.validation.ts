@@ -26,3 +26,9 @@ export const cartQuerySchema = z.object({
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type UpdateCartInput = z.infer<typeof updateCartSchema>;
 export type CartQueryInput = z.infer<typeof cartQuerySchema>;
+
+export const addWishlistToCartSchema = z.object({
+  product_ids: z.array(z.number()).min(1, "Select at least one product")
+});
+
+export type AddWishlistToCartInput = z.infer<typeof addWishlistToCartSchema>;
