@@ -92,6 +92,8 @@ export async function middleware(req: NextRequest) {
     "/^\/api\/coupon(\/.*)?$/",
     "/api/terms",
     "/^\/api\/terms(\/.*)?$/",
+    "/api/policy",
+    "/^\/api\/policy(\/.*)?$/",
     // "/^\/api\/coupon(\/.*)?$/",
   ];
 
