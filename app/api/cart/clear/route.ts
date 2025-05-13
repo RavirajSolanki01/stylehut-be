@@ -3,7 +3,8 @@ import { cartService } from "@/app/services/cart.service";
 import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
-
+import { validateRequest } from "@/app/middleware/validateRequest";
+import { removeFromCartSchema } from "@/app/utils/validationSchema/cart.validation";
 export async function DELETE(request: NextRequest) {
   const userId = request.headers.get('x-user-id');
   if (!userId) {
@@ -14,10 +15,20 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const result = await cartService.clearCart(Number(userId));
+    const validation = await validateRequest(removeFromCartSchema)(request);
+    if ('status' in validation) {
+      return validation;
+    }
+
+    await cartService.removeFromCart(
+      Number(userId),
+      validation.validatedData.product_ids
+    );
 
     return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS, result),
+      successResponse(COMMON_CONSTANTS.SUCCESS, { 
+        message: "Selected items removed from cart" 
+      }),
       { status: HttpStatus.OK }
     );
   } catch (error: any) {
