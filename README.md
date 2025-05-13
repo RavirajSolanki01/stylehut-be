@@ -101,3 +101,11 @@ For open source projects, say how it is licensed.
 ## Project status
 
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+
+-----
+## How to create a new schema in prisma
+### Step 1: Create a new file in the `prisma` directory
+write model name in the file name, e.g. `user.prisma`
+### Step 2: Define the schema in the file
+run `npx prisma migrate dev` to create the schema in the database
