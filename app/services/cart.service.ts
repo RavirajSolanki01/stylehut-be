@@ -197,26 +197,54 @@ export const cartService = {
     });
   },
 
-  async removeFromCart(userId: number, itemId: number) {
-    const cartItem = await prisma.cart_items.findFirst({
-      where: {
-        id: itemId,
-        cart: {
-          user_id: userId,
-          status: 'ACTIVE',
-          is_deleted: false
+  async removeFromCart(userId: number, productIds: number[]) {
+    // Find active cart
+    const cart = await prisma.cart.findFirst({
+      where: { 
+        user_id: userId, 
+        status: 'ACTIVE' 
+      },
+      include: {
+        items: {
+          where: { 
+            product_id: { in: productIds }
+          }
         }
       }
     });
 
-    if (!cartItem) {
-      throw new Error('Cart item not found');
+    if (!cart || !cart.items.length) {
+      throw new Error('No selected items found in cart');
     }
 
-    return await prisma.cart_items.update({
-      where: { id: itemId },
-      data: { is_deleted: true }
+    // Verify all requested products exist in cart
+    const foundProductIds = cart.items.map(item => item.product_id);
+    const missingProductIds = productIds.filter(id => !foundProductIds.includes(id));
+    
+    if (missingProductIds.length) {
+      throw new Error(`Products not found in cart: ${missingProductIds.join(', ')}`);
+    }
+
+    // Hard delete the cart items
+    await prisma.cart_items.deleteMany({
+      where: {
+        cart_id: cart.id,
+        product_id: { in: productIds }
+      }
     });
+
+    // If no items left in cart, delete the cart
+    const remainingItems = await prisma.cart_items.count({
+      where: { cart_id: cart.id }
+    });
+
+    if (remainingItems === 0) {
+      await prisma.cart.delete({
+        where: { id: cart.id }
+      });
+    }
+
+    return { message: 'Items removed from cart successfully' };
   },
   async getAllCartsForAdmin(params: CartQueryInput) {
     const {
@@ -643,35 +671,4 @@ export const cartService = {
     });
   },
 
-  async clearCart(userId: number) {
-    // Find active cart
-    const cart = await prisma.cart.findFirst({
-      where: { 
-        user_id: userId, 
-        status: 'ACTIVE', 
-        is_deleted: false 
-      },
-      include: {
-        items: {
-          where: { is_deleted: false }
-        }
-      }
-    });
-
-    if (!cart || !cart.items.length) {
-      throw new Error('Cart is already empty');
-    }
-
-    // Soft delete all cart items
-    await prisma.cart_items.updateMany({
-      where: {
-        cart_id: cart.id,
-        is_deleted: false
-      },
-      data: { is_deleted: true }
-    });
-
-    return { message: 'Cart cleared successfully' };
-  }
-    
 };
