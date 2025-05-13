@@ -566,8 +566,85 @@ export const cartService = {
     return this.getCart(userId);
   },
 
-  async moveCartItemsToWishlist(userId: number) {
+  async moveCartItemsToWishlist(userId: number, productIds: number[]) {
     // Get active cart items
+    const cart = await prisma.cart.findFirst({
+      where: { 
+        user_id: userId, 
+        status: 'ACTIVE', 
+        is_deleted: false 
+      },
+      include: {
+        items: {
+          where: { 
+            is_deleted: false,
+            product_id: { in: productIds }
+          }
+        }
+      }
+    });
+  
+    if (!cart || !cart.items.length) {
+      throw new Error('No selected items found in cart');
+    }
+  
+    // Verify all requested products exist in cart
+    const foundProductIds = cart.items.map(item => item.product_id);
+    const missingProductIds = productIds.filter(id => !foundProductIds.includes(id));
+    
+    if (missingProductIds.length) {
+      throw new Error(`Products not found in cart: ${missingProductIds.join(', ')}`);
+    }
+  
+    return await prisma.$transaction(async (tx) => {
+      // Add each cart item to wishlist
+      const wishlistPromises = cart.items.map(async (item) => {
+        // Check if item already exists in wishlist
+        const existingWishlistItem = await tx.wishlist.findUnique({
+          where: {
+            user_id_product_id: {
+              user_id: userId,
+              product_id: item.product_id
+            }
+          }
+        });
+  
+        if (existingWishlistItem) {
+          // Restore if soft deleted
+          if (existingWishlistItem.is_deleted) {
+            return tx.wishlist.update({
+              where: { id: existingWishlistItem.id },
+              data: { is_deleted: false }
+            });
+          }
+          return existingWishlistItem;
+        }
+  
+        // Create new wishlist item
+        return tx.wishlist.create({
+          data: {
+            user_id: userId,
+            product_id: item.product_id
+          }
+        });
+      });
+  
+      // Soft delete selected cart items
+      await tx.cart_items.updateMany({
+        where: {
+          cart_id: cart.id,
+          product_id: { in: productIds },
+          is_deleted: false
+        },
+        data: { is_deleted: true }
+      });
+  
+      return Promise.all(wishlistPromises);
+    });
+  },
+
+  async clearCart(userId: number) {
+    // Find active cart
     const cart = await prisma.cart.findFirst({
       where: { 
         user_id: userId, 
@@ -582,40 +659,8 @@ export const cartService = {
     });
 
     if (!cart || !cart.items.length) {
-      throw new Error('No items found in cart');
+      throw new Error('Cart is already empty');
     }
-
-    // Add each cart item to wishlist
-    const wishlistPromises = cart.items.map(async (item) => {
-      // Check if item already exists in wishlist
-      const existingWishlistItem = await prisma.wishlist.findUnique({
-        where: {
-          user_id_product_id: {
-            user_id: userId,
-            product_id: item.product_id
-          }
-        }
-      });
-
-      if (existingWishlistItem) {
-        // Restore if soft deleted
-        if (existingWishlistItem.is_deleted) {
-          return prisma.wishlist.update({
-            where: { id: existingWishlistItem.id },
-            data: { is_deleted: false }
-          });
-        }
-        return existingWishlistItem;
-      }
-
-      // Create new wishlist item
-      return prisma.wishlist.create({
-        data: {
-          user_id: userId,
-          product_id: item.product_id
-        }
-      });
-    });
 
     // Soft delete all cart items
     await prisma.cart_items.updateMany({
@@ -626,8 +671,7 @@ export const cartService = {
       data: { is_deleted: true }
     });
 
-    await Promise.all(wishlistPromises);
-
-    return true;
+    return { message: 'Cart cleared successfully' };
   }
+    
 };

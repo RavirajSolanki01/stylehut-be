@@ -52,7 +52,15 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await cartService.moveCartItemsToWishlist(Number(userId));
+    const validation = await validateRequest(addWishlistToCartSchema)(request);
+    if ('status' in validation) {
+      return validation;
+    }
+
+    await cartService.moveCartItemsToWishlist(
+      Number(userId),
+      validation.validatedData.product_ids
+    );
 
     return NextResponse.json(
       successResponse(COMMON_CONSTANTS.SUCCESS, { message: "All cart items moved to wishlist" }),
