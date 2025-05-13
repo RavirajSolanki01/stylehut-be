@@ -97,4 +97,23 @@ export const couponService = {
 
     return { data, total };
   },
+
+  async getCouponForUser(params: { cart_amount?: number }) {
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        is_active: true,
+        expiry_date: {
+          gte: new Date(), // not expired
+        },
+        min_order_amount: {
+          lte: params.cart_amount, // minimum order amount must be ≤ cart value
+        },
+      },
+      take: 2, // return max 2 coupons
+      orderBy: {
+        discount: "desc", // optional: show highest discount first
+      },
+    });
+    return coupons;
+  },
 };
