@@ -104,6 +104,7 @@ export const wishlistService = {
               name: true,
               description: true,
               image: true,
+              quantity: true,
               price: true,
               discount: true,
               category: true,
