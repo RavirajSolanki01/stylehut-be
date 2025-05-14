@@ -52,6 +52,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
+
     const validation = await validateRequest(addWishlistToCartSchema)(request);
     if ('status' in validation) {
       return validation;

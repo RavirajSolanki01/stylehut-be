@@ -29,12 +29,6 @@ export async function GET(req: Request) {
               name: true,
             },
           },
-            sub_category: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
         },
         take: 5,
       }),
