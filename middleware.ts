@@ -61,7 +61,6 @@ export async function middleware(req: NextRequest) {
 
   // Define protected routes
   const protectedRoutes = [
-    "/api/orders",
     "/api/update-profile",
     "/api/show-profile",
     "/api/update-profile-img",
@@ -96,7 +95,9 @@ export async function middleware(req: NextRequest) {
     "/^\/api\/terms(\/.*)?$/",
     "/api/policy",
     "/^\/api\/policy(\/.*)?$/",
-    // "/^\/api\/coupon(\/.*)?$/",
+
+    "/api/orders",
+    "/^\/api\/orders(\/.*)?$/",
   ];
 
   if (req.method === "OPTIONS") {

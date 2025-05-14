@@ -1,0 +1,298 @@
+import { PrismaClient, Prisma, OrderStatus } from '@prisma/client';
+import { CreateOrderInput, UpdateOrderStatusInput, CreateReturnRequestInput, OrderQueryInput } from '../utils/validationSchema/order.validation';
+import { Decimal } from '@prisma/client/runtime/library';
+// import { OrderStatus, OrderStatusType,PaymentStatus, PaymentMethod, ReturnReason } from '@/app/types/order.types'
+
+
+const prisma = new PrismaClient();
+
+export const orderService = {
+  async createOrder(userId: number, data: CreateOrderInput) {
+    // Validate addresses belong to user
+    const addresses = await Promise.all([
+      prisma.address.findFirst({
+        where: { id: data.shipping_address_id, user_id: userId, is_deleted: false }
+      }),
+      prisma.address.findFirst({
+        where: { id: data.billing_address_id, user_id: userId, is_deleted: false }
+      })
+    ]);
+
+    if (!addresses[0] || !addresses[1]) {
+      throw new Error('Invalid address');
+    }
+
+    // Get active cart
+    const cart = await prisma.cart.findFirst({
+      where: { user_id: userId, status: 'ACTIVE', is_deleted: false },
+      include: {
+        items: {
+          where: { is_deleted: false },
+          include: { product: true }
+        }
+      }
+    });
+
+    if (!cart || !cart.items.length) {
+      throw new Error('Cart is empty');
+    }
+
+    // Calculate totals
+    let totalAmount = new Decimal(0);
+    let discountAmount = new Decimal(0);
+    const shippingCharge = new Decimal(99); // You can make this configurable
+
+    const orderItems = cart.items.map(item => {
+      const price = new Decimal(item.product.price.toString());
+      const discount = new Decimal(item.product.discount || 0);
+      const discountedPrice = price.minus(
+        price.times(discount.dividedBy(100))
+      );
+      
+      totalAmount = totalAmount.plus(price.times(item.quantity));
+      discountAmount = discountAmount.plus(
+        price.times(discount.dividedBy(100)).times(item.quantity)
+      );
+
+      return {
+        product_id: item.product_id,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        price: price,
+        discount: item.product.discount,
+        final_price: discountedPrice
+      };
+    });
+
+    const finalAmount = totalAmount.minus(discountAmount).plus(shippingCharge);
+
+    // Generate order number
+    const orderCount = await prisma.orders.count();
+    const orderNumber = `MYN-${new Date().getFullYear()}-${(orderCount + 1).toString().padStart(4, '0')}`;
+
+    // Create order using transaction
+    return await prisma.$transaction(async (tx) => {
+      // Create order
+      const order = await tx.orders.create({
+        data: {
+          user_id: userId,
+          order_number: orderNumber,
+          total_amount: totalAmount,
+          discount_amount: discountAmount,
+          shipping_charge: shippingCharge,
+          final_amount: finalAmount,
+          payment_method: data.payment_method,
+          shipping_address_id: data.shipping_address_id,
+          billing_address_id: data.billing_address_id,
+          items: {
+            create: orderItems
+          },
+          timeline: {
+            create: {
+              status: OrderStatus.PENDING as OrderStatus,
+              comment: 'Order placed successfully'
+            }
+          }
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                  brand: true
+                }
+              }
+            }
+          },
+          shipping_address: true,
+          billing_address: true,
+          timeline: true
+        }
+      });
+
+      // Update cart status
+      await tx.cart.update({
+        where: { id: cart.id },
+        data: { status: 'CONVERTED_TO_ORDER' }
+      });
+
+      // Update product quantities
+      await Promise.all(orderItems.map(item =>
+        tx.products.update({
+          where: { id: item.product_id },
+          data: { quantity: { decrement: item.quantity } }
+        })
+      ));
+
+      return order;
+    });
+  },
+
+  async getOrders(userId: number, params: OrderQueryInput) {
+    const where = {
+      user_id: userId,
+      is_deleted: false,
+      ...(params.status && { order_status: params.status }),
+      ...(params.payment_status && { payment_status: params.payment_status }),
+      ...(params.startDate && params.endDate && {
+        created_at: {
+          gte: new Date(params.startDate),
+          lte: new Date(params.endDate)
+        }
+      })
+    };
+
+    const [data, total] = await Promise.all([
+      prisma.orders.findMany({
+        where,
+        orderBy: { [params.sortBy || 'created_at']: params.order || 'desc' },
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                  brand: true
+                }
+              }
+            }
+          },
+          shipping_address: true,
+          billing_address: true,
+          timeline: {
+            orderBy: { created_at: 'desc' }
+          },
+          return_request: true
+        }
+      }),
+      prisma.orders.count({ where })
+    ]);
+
+    return { data, total };
+  },
+
+  async getOrderById(userId: number, orderId: number) {
+    const order = await prisma.orders.findFirst({
+      where: {
+        id: orderId,
+        user_id: userId,
+        is_deleted: false
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                category: true,
+                brand: true
+              }
+            }
+          }
+        },
+        shipping_address: true,
+        billing_address: true,
+        timeline: {
+          orderBy: { created_at: 'desc' }
+        },
+        return_request: true
+      }
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    return order;
+  },
+
+  async cancelOrder(userId: number, orderId: number, reason: string) {
+    const order = await this.getOrderById(userId, orderId);
+
+    if (order.order_status !== OrderStatus.PENDING) {
+      throw new Error('Order cannot be cancelled at this stage');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // Update order status
+      const updatedOrder = await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.CANCELLED,
+          cancelled_at: new Date(),
+          cancellation_reason: reason,
+          timeline: {
+            create: {
+              status: OrderStatus.CANCELLED,
+              comment: reason
+            }
+          }
+        },
+        include: {
+          items: true,
+          timeline: {
+            orderBy: { created_at: 'desc' }
+          }
+        }
+      });
+
+      // Restore product quantities
+      await Promise.all(order.items.map(item =>
+        tx.products.update({
+          where: { id: item.product_id },
+          data: { quantity: { increment: item.quantity } }
+        })
+      ));
+
+      return updatedOrder;
+    });
+  },
+
+  async createReturnRequest(userId: number, orderId: number, data: CreateReturnRequestInput) {
+    const order = await this.getOrderById(userId, orderId);
+
+    if (order.order_status !== OrderStatus.DELIVERED) {
+      throw new Error('Order must be delivered to initiate return');
+    }
+
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - order.delivered_at!.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysSinceDelivery > 7) {
+      throw new Error('Return window has expired');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // Create return request
+      const returnRequest = await tx.return_request.create({
+        data: {
+          order_id: orderId,
+          reason: data.reason,
+          description: data.description,
+          images: data.images || [],
+          refund_amount: order.final_amount
+        }
+      });
+
+      // Update order status
+      await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.RETURNED,
+          timeline: {
+            create: {
+              status: OrderStatus.RETURNED,
+              comment: `Return initiated: ${data.reason}`
+            }
+          }
+        }
+      });
+
+      return returnRequest;
+    });
+  }
+};

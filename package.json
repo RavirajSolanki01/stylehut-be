@@ -9,7 +9,8 @@
     "postinstall": "prisma generate",
     "pretty": "prettier --write .",
     "migrate": "prisma migrate deploy",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "update-field":"npx prisma migrate dev --name update-field-size"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

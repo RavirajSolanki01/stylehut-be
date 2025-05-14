@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cartService } from "@/app/services/cart.service";
+import { orderService } from "@/app/services/order.service";
 import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
-import { validateRequest } from "@/app/middleware/validateRequest";
-import { updateCartSchema } from "@/app/utils/validationSchema/cart.validation";
 
 type Props = {
-  params: Promise<{ itemId: string }>;
+  params: { id: string };
 };
 
-export async function PUT(request: NextRequest, { params }: Props) {
+export async function GET(request: NextRequest, { params }: Props) {
   const userId = request.headers.get('x-user-id');
   if (!userId) {
     return NextResponse.json(
@@ -20,24 +18,17 @@ export async function PUT(request: NextRequest, { params }: Props) {
   }
 
   try {
-    const { itemId } = await params;
-    const validation = await validateRequest(updateCartSchema)(request);
-    if ('status' in validation) {
-      return validation;
-    }
-
-    const cartItem = await cartService.updateCartItem(
+    const order = await orderService.getOrderById(
       Number(userId),
-      Number(itemId),
-      validation.validatedData
+      Number(params.id)
     );
 
     return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS, cartItem),
+      successResponse(COMMON_CONSTANTS.SUCCESS, order),
       { status: HttpStatus.OK }
     );
   } catch (error: any) {
-    console.error("Update cart item error:", error);
+    console.error("Get order error:", error);
     return NextResponse.json(
       errorResponse(error.message || "Internal Server Error", 
         error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR),
@@ -56,15 +47,19 @@ export async function DELETE(request: NextRequest, { params }: Props) {
   }
 
   try {
-    const { itemId } = await params;
-    await cartService.removeFromCart(Number(userId), [Number(itemId)]);
+    const { reason } = await request.json();
+    const order = await orderService.cancelOrder(
+      Number(userId),
+      Number(params.id),
+      reason
+    );
 
     return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS),
+      successResponse(COMMON_CONSTANTS.SUCCESS, order),
       { status: HttpStatus.OK }
     );
   } catch (error: any) {
-    console.error("Remove from cart error:", error);
+    console.error("Cancel order error:", error);
     return NextResponse.json(
       errorResponse(error.message || "Internal Server Error", 
         error.message ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR),
