@@ -5,7 +5,7 @@ import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { removeFromCartSchema } from "@/app/utils/validationSchema/cart.validation";
-export async function DELETE(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   const userId = request.headers.get('x-user-id');
   if (!userId) {
     return NextResponse.json(
