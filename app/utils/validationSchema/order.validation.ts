@@ -16,7 +16,7 @@ export const updateOrderStatusSchema = z.object({
 export const createReturnRequestSchema = z.object({
   reason: z.nativeEnum(ReturnReason),
   description: z.string().min(10).max(1024),
-  images: z.array(z.string()).optional()
+  images: z.array(z.any()).optional()
 });
 
 export const orderQuerySchema = z.object({
@@ -49,7 +49,15 @@ export const orderQuerySchema = z.object({
     .default('desc')
 });
 
+export const updateOrderAdminSchema = z.object({
+  status: z.nativeEnum(OrderStatus),
+  comment: z.string().min(1, "Comment is required"),
+  tracking_number: z.string().optional(),
+  expected_delivery: z.string().optional().transform(val => val ? new Date(val) : undefined)
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 export type CreateReturnRequestInput = z.infer<typeof createReturnRequestSchema>;
 export type OrderQueryInput = z.infer<typeof orderQuerySchema>;
+export type UpdateOrderAdminInput = z.infer<typeof updateOrderAdminSchema>;

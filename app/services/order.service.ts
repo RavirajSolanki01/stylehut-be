@@ -1,8 +1,8 @@
 import { PrismaClient, Prisma, OrderStatus } from '@prisma/client';
-import { CreateOrderInput, UpdateOrderStatusInput, CreateReturnRequestInput, OrderQueryInput } from '../utils/validationSchema/order.validation';
+import { CreateOrderInput, UpdateOrderAdminInput, CreateReturnRequestInput, OrderQueryInput } from '../utils/validationSchema/order.validation';
 import { Decimal } from '@prisma/client/runtime/library';
-// import { OrderStatus, OrderStatusType,PaymentStatus, PaymentMethod, ReturnReason } from '@/app/types/order.types'
-
+import { File } from 'formidable';
+import { uploadToCloudinary } from "@/app/utils/cloudinary";
 
 const prisma = new PrismaClient();
 
@@ -73,6 +73,33 @@ export const orderService = {
 
     // Create order using transaction
     return await prisma.$transaction(async (tx) => {
+
+       // First soft delete cart items
+       await tx.cart_items.updateMany({
+        where: { 
+          cart: {
+            user_id: userId,
+            status: 'ACTIVE',
+            is_deleted: false
+          },
+          is_deleted: false 
+        },
+        data: { is_deleted: true }
+      });
+      
+      await tx.cart.updateMany({
+        where: { 
+          user_id: userId,
+          status: 'ACTIVE',
+          is_deleted: false
+        },
+        data: { 
+          status: 'CONVERTED_TO_ORDER',
+          is_deleted: true,
+          updated_at: new Date()
+        }
+      });
+
       // Create order
       const order = await tx.orders.create({
         data: {
@@ -101,6 +128,8 @@ export const orderService = {
               product: {
                 include: {
                   category: true,
+                  sub_category: true,
+                  sub_category_type: true,
                   brand: true
                 }
               }
@@ -110,12 +139,6 @@ export const orderService = {
           billing_address: true,
           timeline: true
         }
-      });
-
-      // Update cart status
-      await tx.cart.update({
-        where: { id: cart.id },
-        data: { status: 'CONVERTED_TO_ORDER' }
       });
 
       // Update product quantities
@@ -251,7 +274,10 @@ export const orderService = {
     });
   },
 
-  async createReturnRequest(userId: number, orderId: number, data: CreateReturnRequestInput) {
+  async createReturnRequest(userId: number, orderId: number, data: CreateReturnRequestInput, files: File[]) {
+    // Upload images to Cloudinary
+    const imageUrls = files && files.length > 0 ? await Promise.all(files.map((file) => uploadToCloudinary(file.filepath))) : [];
+    
     const order = await this.getOrderById(userId, orderId);
 
     if (order.order_status !== OrderStatus.DELIVERED) {
@@ -273,7 +299,7 @@ export const orderService = {
           order_id: orderId,
           reason: data.reason,
           description: data.description,
-          images: data.images || [],
+          images: imageUrls,
           refund_amount: order.final_amount
         }
       });
@@ -294,5 +320,105 @@ export const orderService = {
 
       return returnRequest;
     });
-  }
+  },
+
+  async updateOrderStatus(orderId: number, data: UpdateOrderAdminInput) {
+    const order = await prisma.orders.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        timeline: {
+          orderBy: { created_at: 'desc' }
+        }
+      }
+    });
+  
+    if (!order) {
+      throw new Error('Order not found');
+    }
+  
+    // Validate status transition
+    const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+      PENDING: ['CONFIRMED', 'CANCELLED'],
+      CONFIRMED: ['SHIPPED', 'CANCELLED'],
+      SHIPPED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+      OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
+      DELIVERED: ['RETURNED'],
+      CANCELLED: [],
+      RETURNED: ['REFUNDED'],
+      REFUNDED: []
+    };
+  
+    if (!validTransitions[order.order_status].includes(data.status)) {
+      throw new Error(`Cannot transition from ${order.order_status} to ${data.status}`);
+    }
+
+    const updateData: any = {
+      order_status: data.status,
+      timeline: {
+        create: {
+          status: data.status,
+          comment: data.comment || ''
+        }
+      }
+    };
+  
+    // Add conditional fields
+    if (data.tracking_number) {
+      updateData.tracking_number = data.tracking_number;
+      // "tracking_number": "MYN123456789", // TODO :: Add tracking number
+    }
+  
+    if (data.expected_delivery) {
+      updateData.expected_delivery = new Date(data.expected_delivery);
+    }
+  
+    if (data.status === OrderStatus.DELIVERED) {
+      updateData.delivered_at = new Date();
+    }
+  
+    if (data.status === OrderStatus.CANCELLED) {
+      updateData.cancelled_at = new Date();
+    }
+  
+    return await prisma.$transaction(async (tx) => {
+      
+      // Update order status
+      const updatedOrder = await tx.orders.update({
+        where: { id: orderId },
+        data: updateData,
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          },
+          timeline: {
+            orderBy: { created_at: 'desc' }
+          },
+          shipping_address: true,
+          billing_address: true,
+          user: {
+            select: {
+              email: true,
+              first_name: true,
+              last_name: true
+            }
+          }
+        }
+      });
+  
+      // Handle cancellation
+      if (data.status === OrderStatus.CANCELLED) {
+        await Promise.all(order.items.map(item =>
+          tx.products.update({
+            where: { id: item.product_id },
+            data: { quantity: { increment: item.quantity } }
+          })
+        ));
+      }
+  
+      return updatedOrder;
+    });
+  },
 };
