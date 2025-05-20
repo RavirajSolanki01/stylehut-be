@@ -1,12 +1,30 @@
 export enum OrderStatus {
 	PENDING,
-	CONFIRMED,
-	SHIPPED,
-	OUT_FOR_DELIVERY,
-	DELIVERED,
-	CANCELLED,
-	RETURNED,
-	REFUNDED,
+    PROCESSING,
+    SHIPPED,
+    DELIVERED,
+    CANCELLED,
+    RETURN_REQUESTED,
+    RETURN_APPROVED,
+    RETURN_REJECTED,
+    RETURN_PICKUP_SCHEDULED,
+    RETURN_PICKED,
+    RETURN_RECEIVED,
+    REFUND_INITIATED,
+    REFUND_COMPLETED
+}
+
+export enum ReturnRequest {
+	PENDING,
+	APPROVED,
+	REJECTED,
+	PICKUP_SCHEDULED,
+	PICKED_UP,
+	RECEIVED,
+	QC_PASSED,
+	QC_FAILED,
+	REFUND_INITIATED,
+	REFUND_COMPLETED,
 }
 
 export enum PaymentStatus {
@@ -37,3 +55,4 @@ export type OrderStatusType = keyof typeof OrderStatus;
 export type PaymentStatusType = keyof typeof PaymentStatus;
 export type PaymentMethodType = keyof typeof PaymentMethod;
 export type ReturnReasonType = keyof typeof ReturnReason;
+export type ReturnRequestType = keyof typeof ReturnRequest;

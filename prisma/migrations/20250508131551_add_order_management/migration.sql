@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'REFUNDED');
+-- CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_REJECTED", "RETURN_PICKUP_SCHEDULED", "RETURN_PICKED", "RETURN_RECEIVED", "REFUND_INITIATED", "REFUND_COMPLETED");
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED', 'REFUNDED');
@@ -21,7 +21,7 @@ CREATE TABLE "orders" (
     "final_amount" DECIMAL(65,30) NOT NULL,
     "payment_method" "PaymentMethod" NOT NULL,
     "payment_status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
-    "order_status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
+    "order_status" TEXT NOT NULL DEFAULT 'PENDING',
     "shipping_address_id" INTEGER NOT NULL,
     "billing_address_id" INTEGER NOT NULL,
     "expected_delivery" TIMESTAMP(3),
@@ -56,7 +56,7 @@ CREATE TABLE "order_items" (
 CREATE TABLE "order_timeline" (
     "id" SERIAL NOT NULL,
     "order_id" INTEGER NOT NULL,
-    "status" "OrderStatus" NOT NULL,
+    "status" TEXT NOT NULL,
     "comment" VARCHAR(255),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE "return_request" (
     "reason" "ReturnReason" NOT NULL,
     "description" VARCHAR(1024) NOT NULL,
     "images" TEXT[],
-    "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
     "pickup_date" TIMESTAMP(3),
     "refund_amount" DECIMAL(65,30),
     "refunded_at" TIMESTAMP(3),
