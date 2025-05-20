@@ -15,19 +15,20 @@ export async function POST(req: Request) {
 
     // Generate OTP
     const otp = generateOTP();
+    let isNewUser = false
 
     // Check if user exists
-    const existingUser = await prisma.users.findUnique({ where: { email } });
+    const existingUser = await prisma.users.findUnique({ where: { email }, include: { role: true }});
 
     if (existingUser) {
-      if (existingUser.role_id == 3) {
+      if (existingUser.role && existingUser.role.name.toLocaleLowerCase().includes("admin")) {
         // Update OTP for existing user
         await prisma.users.update({
           where: { email },
           data: { otp, updated_at: new Date() },
         });
       } else {
-        return NextResponse.json({ message: "Email already exists" }, { status: 409 });
+        return NextResponse.json({ message: "Email already exists with another role. Please contact support." }, { status: 409 });
       }
     } else {
       // Create a new user with only email & OTP

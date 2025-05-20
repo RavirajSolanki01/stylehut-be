@@ -24,9 +24,10 @@ model users {
   profile_url  String?  @db.VarChar(255)             // Profile URL (optional)
   email        String   @unique                      // Unique email (required)
   role_id      Int?                                  // Foreign key for Role (optional)
+  is_approved  Boolean  @default(false)              // Add approval status
   mobile       String?  @db.VarChar(10)              // Mobile number (optional)
   gender_id    Int?                                  // Foreign key for Gender (optional)
-  birth_date   String?                             // Birth date (optional)
+  birth_date   String?                               // Birth date (optional)
   otp          String?                               // Store OTP temporarily
   otp_verified Boolean  @default(false)              // OTP verified status
   create_at    DateTime @default(now())              // Timestamp when created
@@ -241,7 +242,7 @@ model cart {
   user            users     @relation(fields: [user_id], references: [id])
   items           cart_items[]
 
-  @@unique([user_id, status])
+  @@unique([user_id, status, is_deleted])
   @@index([user_id, status])
 }
 
@@ -306,16 +307,6 @@ model privacy_policy {
   updated_at DateTime @updatedAt
 }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  SHIPPED
-  OUT_FOR_DELIVERY
-  DELIVERED
-  CANCELLED
-  RETURNED
-  REFUNDED
-}
 
 enum PaymentStatus {
   PENDING
@@ -352,7 +343,8 @@ model orders {
   final_amount          Decimal
   payment_method        PaymentMethod
   payment_status        PaymentStatus @default(PENDING)
-  order_status          OrderStatus   @default(PENDING)
+  order_status          String   @default("PENDING")
+  tracking_number       String?   
   shipping_address_id   Int
   billing_address_id    Int
   expected_delivery     DateTime?
@@ -402,7 +394,7 @@ model order_items {
 model order_timeline {
   id              Int       @id @default(autoincrement())
   order_id        Int
-  status          OrderStatus
+  status          String
   comment         String?   @db.VarChar(255)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
@@ -411,26 +403,29 @@ model order_timeline {
   order           orders    @relation(fields: [order_id], references: [id])
 
   @@index([order_id])
-  @@index([status])
 }
 
 model return_request {
-  id              Int           @id @default(autoincrement())
-  order_id        Int          @unique // One return request per order
+  id              Int             @id @default(autoincrement())
+  order_id        Int             @unique
   reason          ReturnReason
-  description     String        @db.VarChar(1024)
-  images          String[]      // Images of damaged/wrong product
-  status          OrderStatus   @default(PENDING)
+  description     String          @db.VarChar(1024)
+  images          String[]      
+  status          String          @default("PENDING")
+  tracking_number String?
+  qc_notes        String?         @db.VarChar(1024)
+  qc_status       Boolean?
+  refund_id       String?       
   pickup_date     DateTime?
   refund_amount   Decimal?
   refunded_at     DateTime?
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+  rejection_reason  String?       @db.VarChar(1024)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
 
   // Relations
-  order           orders        @relation(fields: [order_id], references: [id])
+  order           orders          @relation(fields: [order_id], references: [id])
 
   @@index([order_id])
-  @@index([status])
 }
 
