@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const validation = await validateRequest(createProductSchema, {
       type: 'formdata',
-      numberFields: ['price', 'discount', 'quantity', 'category_id', 'sub_category_id', 'sub_category_type_id', 'brand_id'],
+      numberFields: ['price', 'discount',  'category_id', 'sub_category_id', 'sub_category_type_id', 'brand_id'],
       fileFields: ['images']
     })({...fields, ...files});
     if ('status' in validation) {
@@ -73,11 +73,14 @@ export async function POST(request: NextRequest) {
       description: fields.description?.[0] || '',
       price: parseFloat(fields.price?.[0] || '0'),
       discount: parseInt(fields.discount?.[0] || '0'),
-      quantity: parseInt(fields.quantity?.[0] || '0'),
       category_id: parseInt(fields.category_id?.[0] || '0'),
       sub_category_id: parseInt(fields.sub_category_id?.[0] || '0'),
       sub_category_type_id: parseInt(fields.sub_category_type_id?.[0] || '0'),
       brand_id: parseInt(fields.brand_id?.[0] || '0'),
+      size_quantity_id: parseInt(fields.size_quantity_id?.[0] || '0'),
+      custom_product_id: fields.custom_product_id?.[0] || '',
+      variant_id: fields.variant_id?.[0] || '',
+      is_main_product: fields.is_main_product?.[0] === 'true' ? true : false,
     };
     
     // Convert files to array

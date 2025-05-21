@@ -67,4 +67,9 @@ export interface ProductInclude {
       is_deleted: boolean;
     };
   };
+  size_quantities?: {
+    include: {
+      size_data: true;
+    };
+  };
 }

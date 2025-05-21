@@ -164,17 +164,20 @@ model products {
   image                       String[]
   price                       Decimal
   discount                    Int?
-  quantity                    Int
+  custom_product_id           String?
+  // quantity                    Int
   category_id                 Int                                    //foreign key
   sub_category_id             Int                                    //foreign key
   sub_category_type_id        Int                                    //foreign key
   brand_id                    Int                                    //foreign key
+  size_quantity_id            Int?                                   //foreign key
   create_at                   DateTime @default(now())
   updated_at                  DateTime @updatedAt
   is_deleted                  Boolean  @default(false)
   is_featured                 Boolean  @default(false)
   views_count                 Int      @default(0)
-
+  variant_id                  String?
+  is_main_product             Boolean  @default(true)
   // Relations
   category             category @relation(fields: [category_id], references: [id])
   sub_category         sub_category @relation(fields: [sub_category_id], references: [id])
@@ -184,10 +187,38 @@ model products {
   wishlist             wishlist[]
   cart_items           cart_items[]
   order_items          order_items[]
+  // size_quantity        size_quantity? @relation(fields: [size_quantity_id], references: [id])
+  size_quantities        size_quantity[]
 
   @@index([category_id])
   @@index([brand_id])
   @@index([is_deleted])
+}
+model size_quantity {
+  id                Int @id @default(autoincrement())
+  quantity          Int
+  product_id        Int?
+  custom_product_id String?
+  variant_id        Int?
+  size_id           Int
+  create_at         DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  is_deleted        Boolean  @default(false)
+
+  // Relations
+  size_data         size_data @relation(fields: [size_id], references: [id])
+
+  products products[]
+}
+model size_data {
+  id Int @id @default(autoincrement())
+  size String
+  name String
+  create_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  is_deleted Boolean @default(false)  
+
+  size_quantity size_quantity[]
 }
 
 model ratings {
