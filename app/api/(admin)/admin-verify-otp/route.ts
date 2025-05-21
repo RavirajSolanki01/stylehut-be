@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { email, otp } = body;
 
     // Check if user exists
-    const user = await prisma.users.findUnique({ where: { email } });
+    const user = await prisma.users.findUnique({ where: { email }, include: { role: true } });
 
     if (!user) {
       return NextResponse.json({ message: "Admin User not found" }, { status: 404 });
@@ -38,9 +38,11 @@ export async function POST(req: Request) {
       message: string;
       isNewUser: boolean;
       token?: string;
+      role?: string;
     } = {
       message: "OTP verified successfully",
-      isNewUser: !user.is_approved
+      isNewUser: !user.is_approved,
+      role: user.role?.name
     }
 
     if(user.is_approved) {
