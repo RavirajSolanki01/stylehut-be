@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shopByCategoryService } from "@/app/services/shop-by-category.service";
-import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
-import { categoryService } from "@/app/services/category.service";
+import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { subCategoryService } from "@/app/services/subCategory.service";
-import { subCategoryTypeService } from "@/app/services/subCategoryType.service";
-import { brandService } from "@/app/services/brand.service";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { parseForm } from "@/app/utils/helper/formDataParser";
-import {
-  createProductSchema,
-  productQuerySchema,
-} from "@/app/utils/validationSchema/product.validation";
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
-import { FormattedProduct } from "@/app/types/rating.types";
 import { createShopByCategorySchema } from "@/app/utils/validationSchema/shop-by-category.validation";
 // Configure Next.js to handle file uploads
 export const config = {

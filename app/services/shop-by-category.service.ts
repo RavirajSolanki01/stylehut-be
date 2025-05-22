@@ -10,7 +10,7 @@ import {
 import { uploadToCloudinary, deleteFromCloudinary } from "@/app/utils/cloudinary";
 import { File } from "formidable";
 import type { ProductQueryInput } from "../utils/validationSchema/product.validation";
-import { CreateShopByCategoryDto } from "../types/shop-by-category.types";
+import { CreateShopByCategoryDto, UpdateShopByCategoryDto } from "../types/shop-by-category.types";
 
 const prisma = new PrismaClient();
 
@@ -259,216 +259,59 @@ export const shopByCategoryService = {
     return { data: formattedData, total };
   },
 
-  async getProductById(id: number) {
-    const product = await prisma.products.findFirst({
+  async getShopByCategory(id: number) {
+    const shopByCategory = await prisma.shop_by_category.findFirst({
       where: {
         id,
-        is_deleted: false,
       },
       include: {
-        category: true,
         sub_category: true,
-        sub_category_type: true,
-        brand: true,
-        ratings: {
-          where: { is_deleted: false },
-          include: {
-            users: {
-              select: {
-                id: true,
-                first_name: true,
-                last_name: true,
-                profile_url: true,
-              },
-            },
-          },
-          orderBy: {
-            create_at: "desc",
-          },
-        },
-        size_quantities: {
-          include: {
-            size_data: true,
-          },
-        },
       },
     });
 
-    if (!product) return null;
-
-    // Calculate average rating
-    const averageRating =
-      product.ratings.length > 0
-        ? product.ratings.reduce((acc, curr) => acc + Number(curr.ratings), 0) /
-          product.ratings.length
-        : 0;
-
-    // Get rating distribution
-    const ratingDistribution = {
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    };
-
-    product.ratings.forEach(rating => {
-      ratingDistribution[Number(rating.ratings) as keyof typeof ratingDistribution]++;
-    });
-
-    let relatedProducts: any[] = [];
-    if (product.variant_id) {
-      relatedProducts = await prisma.products.findMany({
-        where: {
-          variant_id: product.variant_id,
-          is_deleted: false,
-          NOT: {
-            id: product.id, // exclude the current product
-          },
-        },
-        include: {
-          size_quantities: {
-            include: {
-              size_data: true,
-            },
-          },
-          brand: true,
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
-        },
-      });
-    }
+    if (!shopByCategory) return null;
 
     return {
-      ...product,
-      ratingStats: {
-        averageRating,
-        totalRatings: product.ratings.length,
-        distribution: ratingDistribution,
-      },
-
-      relatedProducts,
+      ...shopByCategory,
     };
   },
 
-  async updateProduct(id: number, data: UpdateProductDto, files?: File[]) {
+  async updateShopByCategory(id: number, data: UpdateShopByCategoryDto, files?: File[]) {
     try {
-      // Get existing product
-      const existingProduct = await prisma.products.findUnique({
+      // Get existing shop by category
+      const existingProduct = await prisma.shop_by_category.findUnique({
         where: { id },
         select: { image: true },
       });
 
       if (!existingProduct) {
-        throw new Error("Product not found");
+        throw new Error("Shop by category not found");
       }
 
-      let imageUrls = [...existingProduct.image];
-
+      let newImageUrl = "";
       if (files && files.length > 0) {
-        const newImageUrls = await Promise.all(
-          files.map(file => uploadToCloudinary(file.filepath))
-        );
-
-        imageUrls = [...imageUrls, ...newImageUrls];
+        newImageUrl = await uploadToCloudinary(files[0].filepath);
       }
-      const allSizeData = await prisma.size_quantity.findMany({
-        where: {
-          custom_product_id: data.custom_product_id,
-          is_deleted: false,
-        },
-      });
-
-      return await prisma.products.update({
+      return await prisma.shop_by_category.update({
         where: { id },
         data: {
           ...data,
-          ...(imageUrls && { image: imageUrls }),
+          ...(newImageUrl && { image: newImageUrl }),
           updated_at: new Date(),
-          size_quantities: {
-            connect: allSizeData.map(size => ({
-              id: size.id,
-            })),
-          },
         },
         include: {
-          category: true,
           sub_category: true,
-          sub_category_type: true,
-          brand: true,
-          size_quantities: {
-            include: {
-              size_data: true,
-            },
-          },
         },
       });
     } catch (error) {
-      console.error("Update product error:", error);
+      console.error("Update shop by category error:", error);
       throw error;
     }
   },
 
-  async deleteProduct(id: number) {
-    return await prisma.products.update({
+  async deleteShopByCategory(id: number) {
+    return await prisma.shop_by_category.delete({
       where: { id },
-      data: {
-        is_deleted: true,
-        updated_at: new Date(),
-      },
     });
-  },
-
-  async removeProductImages(id: number, imageUrls: string[]) {
-    try {
-      // Get existing product
-      const product = await prisma.products.findUnique({
-        where: { id },
-        select: { image: true },
-      });
-
-      if (!product) {
-        throw new Error("Product not found");
-      }
-
-      // Validate that all imageUrls exist in product.image
-      const invalidUrls = imageUrls.filter(url => !product.image.includes(url));
-      if (invalidUrls.length > 0) {
-        throw new Error("Some image URLs are invalid");
-      }
-
-      // Ensure at least one image remains
-      const remainingImages = product.image.filter(url => !imageUrls.includes(url));
-      if (remainingImages.length === 0) {
-        throw new Error("Cannot remove all images. Product must have at least one image");
-      }
-
-      // Delete images from Cloudinary
-      await Promise.all(
-        imageUrls.map(async url => {
-          const publicId = url.split("/").pop()?.split(".")[0];
-          if (publicId) await deleteFromCloudinary(publicId);
-        })
-      );
-
-      // Update product with remaining images
-      return await prisma.products.update({
-        where: { id },
-        data: {
-          image: remainingImages,
-          updated_at: new Date(),
-        },
-        include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
-          brand: true,
-        },
-      });
-    } catch (error) {
-      console.error("Remove product images error:", error);
-      throw error;
-    }
   },
 };
