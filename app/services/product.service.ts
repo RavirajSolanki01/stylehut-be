@@ -317,6 +317,17 @@ export const productService = {
 
     if (!product) return null;
 
+    const size_quantities = await prisma.size_quantity.findMany({
+      where: {
+        custom_product_id: product.custom_product_id,
+        is_deleted: false,
+      },
+      include: {
+        size_data: true,
+      },
+    });
+  
+
     // Calculate average rating
     const averageRating =
       product.ratings.length > 0
@@ -363,6 +374,7 @@ export const productService = {
 
     return {
       ...product,
+      size_quantities,
       ratingStats: {
         averageRating,
         totalRatings: product.ratings.length,

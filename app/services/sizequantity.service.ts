@@ -43,6 +43,47 @@ export const sizeQuantityService = {
       })
     );
   },
+
+  async updateSizeQuantities(dataList: {
+    id: number;
+    quantity?: number;
+    product_id?: number;
+    variant_id?: number;
+    size_id?: number;
+    custom_product_id?: string;
+  }[]) {
+    return await Promise.all(
+      dataList.map(async (data) => {
+        const { id, ...updateFields } = data;
+  
+        // Ensure the record exists
+        const existing = await prisma.size_quantity.findUnique({
+          where: { id },
+        });
+  
+        if (!existing || existing.is_deleted) {
+          throw new Error(`SizeQuantity with id ${id} not found or deleted.`);
+        }
+  
+        return await prisma.size_quantity.update({
+          where: { id },
+          data: {
+            ...updateFields,
+            is_deleted: false, // optional: reset if needed
+          },
+        });
+      })
+    );
+  },
+  
+  
+async deleteByCustomProductId(customProductId: string) {
+  return await prisma.size_quantity.deleteMany({
+    where: {
+      custom_product_id: customProductId,
+    },
+  });
+},
     
   async getAllSizeQuantities() {
     return await prisma.size_quantity.findMany({
