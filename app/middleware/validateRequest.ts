@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ZodSchema } from 'zod';
-import { errorResponse } from '../utils/apiResponse';
-import { HttpStatus } from '../utils/enums/httpStatusCode';
+import { NextRequest, NextResponse } from "next/server";
+import { ZodSchema } from "zod";
+import { errorResponse } from "../utils/apiResponse";
+import { HttpStatus } from "../utils/enums/httpStatusCode";
 
 type ValidationOptions = {
-  type?: 'json' | 'formdata';
+  type?: "json" | "formdata";
   numberFields?: string[];
   fileFields?: string[];
 };
@@ -12,9 +12,9 @@ type ValidationOptions = {
 export const validateRequest = (schema: ZodSchema, options: ValidationOptions = {}) => {
   return async (data: any) => {
     try {
-      const { type = 'json', numberFields = [], fileFields = [] } = options;
+      const { type = "json", numberFields = [], fileFields = [] } = options;
 
-      if (type === 'formdata') {
+      if (type === "formdata") {
         // Convert string numbers to actual numbers if needed
         if (numberFields.length > 0) {
           numberFields.forEach(field => {
@@ -27,8 +27,8 @@ export const validateRequest = (schema: ZodSchema, options: ValidationOptions = 
         if (Object.keys(data).length > 0) {
           Object.keys(data).forEach(key => {
             if (Array.isArray(data[key]) && !fileFields.includes(key)) {
-              data[key] = data[key]?.[0]
-            } else if (typeof data[key] === 'string') {
+              data[key] = data[key]?.[0];
+            } else if (typeof data[key] === "string") {
               data[key] = data[key].trim();
             }
           });
@@ -36,17 +36,12 @@ export const validateRequest = (schema: ZodSchema, options: ValidationOptions = 
       } else {
         data = await data.json();
       }
-
       const validatedData = await schema.parseAsync(data);
       return { validatedData };
     } catch (error: any) {
       console.error("Validation error:", error);
       return NextResponse.json(
-        errorResponse(
-          'Validation Error',
-          HttpStatus.BAD_REQUEST,
-          error.errors || error.message
-        ),
+        errorResponse("Validation Error", HttpStatus.BAD_REQUEST, error.errors || error.message),
         { status: HttpStatus.BAD_REQUEST }
       );
     }
