@@ -49,11 +49,11 @@ export async function PUT(request: NextRequest) {
     // Update user approval status
     const updatedUser = await prisma.users.update({
       where: { id: userId },
-      data: { is_approved: true },
+      data: { is_approved: !user?.is_approved },
     });
 
     return NextResponse.json(
-      successResponse("Admin user approved successfully", updatedUser),
+      successResponse( !user?.is_approved ? "Admin user activated successfully" : "Admin user deactivated successfully", updatedUser),
       { status: HttpStatus.OK }
     );
   } catch (error) {

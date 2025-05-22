@@ -15,7 +15,8 @@ export const checkAdminRole = async (req: NextRequest): Promise<NextResponse | n
 
   try {
     const role = await userService.getRoleById(parseInt(userRoleId));
-    if (!role || role.name !== "Admin") {
+    console.log("🚀 ~ checkAdminRole ~ role:", role)
+    if (!role || !role.name.toLocaleLowerCase().includes("admin")) {
       return NextResponse.json(
         errorResponse("Unauthorized: Admin access required", HttpStatus.FORBIDDEN),
         { status: HttpStatus.FORBIDDEN }

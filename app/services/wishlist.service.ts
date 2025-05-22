@@ -269,14 +269,41 @@ export const wishlistService = {
 
     const skip = (page - 1) * pageSize;
 
+    let orderBy;
+    switch (sortBy) {
+      case "name":
+        orderBy = { products: { name: order } };
+        break;
+      case "brand":
+        orderBy = { products: { brand: { name: order } } };
+        break;
+      case "category":
+        orderBy = { products: { category: { name: order } } };
+        break;
+      case "sub_category":
+        orderBy = { products: { sub_category: { name: order } } };
+        break;
+      case "sub_category_type":
+        orderBy = { products: { sub_category_type: { name: order } } };
+        break;
+      default:
+        orderBy = { [sortBy]: order };
+    }
+
     const where = {
       is_deleted: false,
-      // products: {
-      //   name: {
-      //     contains: search,
-      //     mode: 'insensitive'
-      //   }
-      // }
+      ...(search && {
+        product: {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+            { category: { name: { contains: search, mode: "insensitive" as const } } },
+            { sub_category: { name: { contains: search, mode: "insensitive" as const } } },
+            { sub_category_type: { name: { contains: search, mode: "insensitive" as const } } },
+            { brand: { name: { contains: search, mode: "insensitive" as const } } }
+          ]
+        }
+      })
     };
 
     const [wishlistItems, total] = await Promise.all([
@@ -306,6 +333,18 @@ export const wishlistService = {
                   name: true
                 }
               },
+              sub_category: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              sub_category_type: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
               brand: {
                 select: {
                   id: true,
@@ -315,9 +354,9 @@ export const wishlistService = {
             }
           }
         },
-        orderBy: {
-          [sortBy]: order
-        }
+        // orderBy: {
+        //   [sortBy]: order
+        // }
       }),
       prisma.wishlist.count({ where })
     ]);
