@@ -256,4 +256,72 @@ export const wishlistService = {
       isWishlisted: true
     };
   },
+
+
+  async getAllWishlistItems(params: WishlistQueryInput) {
+    const {
+      page = 1,
+      pageSize = 10,
+      search = "",
+      sortBy = "created_at",
+      order = "desc"
+    } = params;
+
+    const skip = (page - 1) * pageSize;
+
+    const where = {
+      is_deleted: false,
+      // products: {
+      //   name: {
+      //     contains: search,
+      //     mode: 'insensitive'
+      //   }
+      // }
+    };
+
+    const [wishlistItems, total] = await Promise.all([
+      prisma.wishlist.findMany({
+        skip,
+        take: pageSize,
+        where,
+        include: {
+          users: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true
+            }
+          },
+          products: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              image: true,
+              discount: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              brand: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          [sortBy]: order
+        }
+      }),
+      prisma.wishlist.count({ where })
+    ]);
+
+    return { data: wishlistItems, total };
+  }
 };
