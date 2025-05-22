@@ -1,6 +1,6 @@
 import { z } from 'zod';
-// import { OrderStatus, PaymentStatus, PaymentMethod, ReturnReason } from '@/app/types/order.types'
-import { OrderStatus, PaymentMethod, PaymentStatus, ReturnReason } from '@prisma/client';
+import { OrderStatus } from '@/app/types/order.types'
+import { PaymentMethod, PaymentStatus, ReturnReason } from '@prisma/client';
 
 export const createOrderSchema = z.object({
   shipping_address_id: z.number().positive(),
@@ -27,7 +27,7 @@ export const orderQuerySchema = z.object({
     .optional()
     .transform(val => {
       if (!val || val === '') return undefined;
-      return val as OrderStatus;
+      return val;
     }),
   payment_status: z.string()
     .optional()

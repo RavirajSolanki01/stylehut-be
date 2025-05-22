@@ -1,4 +1,5 @@
-import { PrismaClient, Prisma, OrderStatus } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { OrderStatus } from '@/app/types/order.types';
 import { CreateOrderInput, UpdateOrderAdminInput, CreateReturnRequestInput, OrderQueryInput } from '../utils/validationSchema/order.validation';
 import { Decimal } from '@prisma/client/runtime/library';
 import { File } from 'formidable';
@@ -117,7 +118,7 @@ export const orderService = {
           },
           timeline: {
             create: {
-              status: OrderStatus.PENDING as OrderStatus,
+              status: OrderStatus.PENDING,
               comment: 'Order placed successfully'
             }
           }
@@ -308,10 +309,10 @@ export const orderService = {
       await tx.orders.update({
         where: { id: orderId },
         data: {
-          order_status: OrderStatus.RETURNED,
+          order_status: OrderStatus.RETURN_REQUESTED,
           timeline: {
             create: {
-              status: OrderStatus.RETURNED,
+              status: OrderStatus.RETURN_REQUESTED,
               comment: `Return initiated: ${data.reason}`
             }
           }
@@ -339,17 +340,24 @@ export const orderService = {
   
     // Validate status transition
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-      PENDING: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['SHIPPED', 'CANCELLED'],
-      SHIPPED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
-      OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
-      DELIVERED: ['RETURNED'],
-      CANCELLED: [],
-      RETURNED: ['REFUNDED'],
-      REFUNDED: []
+      [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+      [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.SHIPPED]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED],
+      [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+      [OrderStatus.DELIVERED]: [OrderStatus.RETURN_REQUESTED],
+      [OrderStatus.RETURN_REQUESTED]: [OrderStatus.RETURN_APPROVED, OrderStatus.RETURN_REJECTED],
+      [OrderStatus.RETURN_APPROVED]: [OrderStatus.RETURN_PICKUP_SCHEDULED],
+      [OrderStatus.RETURN_PICKUP_SCHEDULED]: [OrderStatus.RETURN_PICKED],
+      [OrderStatus.RETURN_PICKED]: [OrderStatus.RETURN_RECEIVED],
+      [OrderStatus.RETURN_RECEIVED]: [OrderStatus.REFUND_INITIATED],
+      [OrderStatus.REFUND_INITIATED]: [OrderStatus.REFUND_COMPLETED],
+      [OrderStatus.RETURN_REJECTED]: [],
+      [OrderStatus.REFUND_COMPLETED]: [],
+      [OrderStatus.CANCELLED]: []
     };
   
-    if (!validTransitions[order.order_status].includes(data.status)) {
+    if (!validTransitions[order.order_status as keyof typeof OrderStatus].includes(data.status)) {
       throw new Error(`Cannot transition from ${order.order_status} to ${data.status}`);
     }
 

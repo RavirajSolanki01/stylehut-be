@@ -267,100 +267,120 @@ export const wishlistService = {
       order = "desc"
     } = params;
 
-    const skip = (page - 1) * pageSize;
-
-    let orderBy;
-    switch (sortBy) {
-      case "name":
-        orderBy = { products: { name: order } };
-        break;
-      case "brand":
-        orderBy = { products: { brand: { name: order } } };
-        break;
-      case "category":
-        orderBy = { products: { category: { name: order } } };
-        break;
-      case "sub_category":
-        orderBy = { products: { sub_category: { name: order } } };
-        break;
-      case "sub_category_type":
-        orderBy = { products: { sub_category_type: { name: order } } };
-        break;
-      default:
-        orderBy = { [sortBy]: order };
-    }
-
-    const where = {
-      is_deleted: false,
-      ...(search && {
-        product: {
+    const groupedItems = await prisma.wishlist.groupBy({
+      by: ['product_id'],
+      where: {
+        is_deleted: false,
+        ...(search && {
           OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { description: { contains: search, mode: "insensitive" as const } },
-            { category: { name: { contains: search, mode: "insensitive" as const } } },
-            { sub_category: { name: { contains: search, mode: "insensitive" as const } } },
-            { sub_category_type: { name: { contains: search, mode: "insensitive" as const } } },
-            { brand: { name: { contains: search, mode: "insensitive" as const } } }
-          ]
-        }
-      })
-    };
-
-    const [wishlistItems, total] = await Promise.all([
-      prisma.wishlist.findMany({
-        skip,
-        take: pageSize,
-        where,
-        include: {
-          users: {
-            select: {
-              id: true,
-              first_name: true,
-              last_name: true,
-              email: true
+            {
+              products: {
+                OR: [
+                  { name: { contains: search, mode: "insensitive" as const } },
+                  { category: { name: { contains: search, mode: "insensitive" as const } } },
+                  { sub_category: { name: { contains: search, mode: "insensitive" as const } } },
+                  { sub_category_type: { name: { contains: search, mode: "insensitive" as const } } },
+                  { brand: { name: { contains: search, mode: "insensitive" as const } } }
+                ]
+              }
             }
+          ]
+        })
+      },
+      _count: {
+        user_id: true
+      }
+    });
+
+    // Get total count for pagination
+    const total = groupedItems.length;
+
+    // Get detailed product information for the paginated subset
+    const paginatedProductIds = groupedItems
+      .slice((page - 1) * pageSize, page * pageSize)
+      .map(item => item.product_id);
+
+    const detailedProducts = await prisma.products.findMany({
+      where: {
+        id: {
+          in: paginatedProductIds
+        }
+      },
+      include: {
+        category: true,
+        sub_category: true,
+        sub_category_type: true,
+        brand: true,
+        wishlist: {
+          where: {
+            is_deleted: false
           },
-          products: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              image: true,
-              discount: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              sub_category: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              sub_category_type: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              brand: {
-                select: {
-                  id: true,
-                  name: true
+          include: {
+            users: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+                role: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
                 }
               }
             }
           }
-        },
-        // orderBy: {
-        //   [sortBy]: order
-        // }
-      }),
-      prisma.wishlist.count({ where })
-    ]);
+        }
+      }
+    });
 
-    return { data: wishlistItems, total };
+    // Format the response
+    const formattedData = detailedProducts.map(product => {
+      const groupedItem = groupedItems.find(item => item.product_id === product.id);
+      const uniqueUsers = groupedItem?._count.user_id || 0;
+
+      // Get unique users who wishlisted this product
+      const users = [...new Set(product.wishlist.map(item => item.users))];
+
+      return {
+        product: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          discount: product.discount,
+          image: product.image,
+          // quantity: product.quantity,
+          category: product.category,
+          sub_category: product.sub_category,
+          sub_category_type: product.sub_category_type,
+          brand: product.brand
+        },
+        unique_users_count: uniqueUsers,
+        users: users
+      };
+    });
+
+    // Apply sorting
+    const sortedData = formattedData.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return order === "desc" 
+            ? b.product.name.localeCompare(a.product.name)
+            : a.product.name.localeCompare(b.product.name);
+        case "users":
+          return order === "desc"
+            ? b.unique_users_count - a.unique_users_count
+            : a.unique_users_count - b.unique_users_count;
+        case "price":
+          return order === "desc"
+            ? Number(b.product.price) - Number(a.product.price)
+            : Number(a.product.price) - Number(b.product.price);
+        default:
+          return 0;
+      }
+    });
+
+    return { data: sortedData, total };
   }
 };
