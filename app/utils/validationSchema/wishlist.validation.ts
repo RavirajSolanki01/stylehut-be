@@ -12,6 +12,7 @@ export const wishlistQuerySchema = z.object({
   pageSize: z.string().optional().transform(val => parseInt(val || '10')),
   sortBy: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional(),
+  search: z.string(),
 });
 
 export type CreateWishlistInput = z.infer<typeof createWishlistSchema>;
