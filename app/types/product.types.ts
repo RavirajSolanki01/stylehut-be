@@ -4,11 +4,15 @@ export interface CreateProductDto {
   image?: string[];
   price: number;
   discount?: number;
-  quantity: number;
+  // quantity: number;
   category_id: number;
   sub_category_id: number;
   sub_category_type_id: number;
   brand_id: number;
+  size_quantity_id?: number;
+  custom_product_id?: string;
+  is_main_product?: boolean;
+  variant_id?: string;
 }
 
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
