@@ -14,3 +14,12 @@ export interface ShopByCategoryResponse extends CreateShopByCategoryDto {
   updated_at: Date;
   is_deleted: boolean;
 }
+
+export interface ShopByCategoryOrderBy {
+  name?: "asc" | "desc";
+  minDiscount?: "asc" | "desc";
+  maxDiscount?: "asc" | "desc";
+  sub_category_id?: "asc" | "desc";
+  user_id?: "asc" | "desc";
+  [key: string]: "asc" | "desc" | undefined;
+}

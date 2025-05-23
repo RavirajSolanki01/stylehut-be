@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shopByCategoryService } from "@/app/services/shop-by-category.service";
-import { errorResponse, successResponse } from "@/app/utils/apiResponse";
+import { errorResponse } from "@/app/utils/apiResponse";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { parseForm } from "@/app/utils/helper/formDataParser";
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
-import {
-  createShopByCategorySchema,
-  updateShopByCategorySchema,
-} from "@/app/utils/validationSchema/shop-by-category.validation";
+import { updateShopByCategorySchema } from "@/app/utils/validationSchema/shop-by-category.validation";
 import { subCategoryService } from "@/app/services/subCategory.service";
 // Configure Next.js to handle file uploads
 export const config = {
@@ -119,7 +116,7 @@ export async function DELETE(request: NextRequest, { params }: Props) {
       { status: HttpStatus.OK }
     );
   } catch (error) {
-    console.error("Delete product error:", error);
+    console.error("Delete shop by category error:", error);
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }

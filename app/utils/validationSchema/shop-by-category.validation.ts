@@ -31,7 +31,7 @@ export const createShopByCategorySchema = z.object({
 export const updateShopByCategorySchema = createShopByCategorySchema.partial();
 
 // Query params schema for product listing
-export const productQuerySchema = z.object({
+export const shopByCategoryQuerySchema = z.object({
   page: z
     .string()
     .optional()
@@ -43,24 +43,8 @@ export const productQuerySchema = z.object({
   search: z.string().optional(),
   sortBy: z.string().optional(),
   order: z.enum(["asc", "desc"]).optional(),
-  category_id: z
-    .string()
-    .optional()
-    .transform(val => parseInt(val || "0")),
-  sub_category_id: z
-    .string()
-    .optional()
-    .transform(val => parseInt(val || "0")),
-  minPrice: z
-    .string()
-    .optional()
-    .transform(val => parseFloat(val || "0")),
-  maxPrice: z
-    .string()
-    .optional()
-    .transform(val => parseFloat(val || "0")),
 });
 
 // Types inferred from schemas
 export type CreateShopByCategoryInput = z.infer<typeof createShopByCategorySchema>;
-export type ProductQueryInput = z.infer<typeof productQuerySchema>;
+export type ShopByCategoryQueryInput = z.infer<typeof shopByCategoryQuerySchema>;
