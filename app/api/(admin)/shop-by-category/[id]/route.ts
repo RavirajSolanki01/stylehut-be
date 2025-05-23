@@ -85,10 +85,9 @@ export async function GET(request: NextRequest, { params }: Props) {
         status: HttpStatus.NOT_FOUND,
       });
     }
-    return NextResponse.json(
-      { message: COMMON_CONSTANTS.SUCCESS, data: shopByCategory },
-      { status: HttpStatus.OK }
-    );
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, shopByCategory), {
+      status: HttpStatus.OK,
+    });
   } catch (error) {
     console.error("Get shop by category error:", error);
     return NextResponse.json(
@@ -113,12 +112,9 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     }
 
     const product = await shopByCategoryService.deleteShopByCategory(Number(id));
-    return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS, {
-        product,
-      }),
-      { status: HttpStatus.OK }
-    );
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, product), {
+      status: HttpStatus.OK,
+    });
   } catch (error) {
     console.error("Delete shop by category error:", error);
     return NextResponse.json(

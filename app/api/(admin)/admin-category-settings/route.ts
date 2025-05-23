@@ -21,12 +21,9 @@ export async function PUT(req: NextRequest) {
     const updated = await adminSettingCategoryService.updateAdminSettingSubcategory(
       validation.validatedData
     );
-    return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS, {
-        updated,
-      }),
-      { status: HttpStatus.OK }
-    );
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, updated), {
+      status: HttpStatus.OK,
+    });
   } catch (error) {
     console.error("Update admin setting category error:", error);
     return NextResponse.json(
@@ -42,12 +39,9 @@ export async function GET(req: NextRequest) {
     if (authResponse) return authResponse;
 
     const data = await adminSettingCategoryService.getAdminSettingSubcategory();
-    return NextResponse.json(
-      successResponse(COMMON_CONSTANTS.SUCCESS, {
-        data,
-      }),
-      { status: HttpStatus.OK }
-    );
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, data), {
+      status: HttpStatus.OK,
+    });
   } catch (error) {
     console.error("Update admin setting category error:", error);
     return NextResponse.json(
