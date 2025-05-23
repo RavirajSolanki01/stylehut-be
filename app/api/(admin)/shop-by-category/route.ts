@@ -65,8 +65,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const userId = request.headers.get("x-user-id");
-
   try {
     const { searchParams } = new URL(request.url);
 
