@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shopByCategoryService } from "@/app/services/shop-by-category.service";
-import { errorResponse } from "@/app/utils/apiResponse";
+import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { parseForm } from "@/app/utils/helper/formDataParser";
@@ -62,7 +62,9 @@ export async function PUT(request: NextRequest, { params }: Props) {
       images
     );
     return NextResponse.json(
-      { message: COMMON_CONSTANTS.SUCCESS, data: product },
+      successResponse(COMMON_CONSTANTS.SUCCESS, {
+        product,
+      }),
       { status: HttpStatus.OK }
     );
   } catch (error) {
@@ -112,7 +114,9 @@ export async function DELETE(request: NextRequest, { params }: Props) {
 
     const product = await shopByCategoryService.deleteShopByCategory(Number(id));
     return NextResponse.json(
-      { message: COMMON_CONSTANTS.SUCCESS, data: product },
+      successResponse(COMMON_CONSTANTS.SUCCESS, {
+        product,
+      }),
       { status: HttpStatus.OK }
     );
   } catch (error) {
