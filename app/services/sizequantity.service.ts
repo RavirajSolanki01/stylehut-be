@@ -9,6 +9,8 @@ export const sizeQuantityService = {
     variant_id?: number;
     size_id: number;
     custom_product_id?: string;
+    price?: number;
+    discount?: number;
   }[]) {
     return await Promise.all(
       dataList.map(async (data) => {
@@ -32,8 +34,10 @@ export const sizeQuantityService = {
         }
   
         return await prisma.size_quantity.create({
-          data: {
+          data: {            
             quantity: data.quantity,
+            price: data.price,
+            discount: data.discount,
             is_deleted: false,
             custom_product_id: data.custom_product_id,
             variant_id: data.variant_id,

@@ -197,6 +197,8 @@ model products {
 model size_quantity {
   id                Int @id @default(autoincrement())
   quantity          Int
+  price             Decimal? @default(0)
+  discount          Decimal? @default(0)  
   product_id        Int?
   custom_product_id String?
   variant_id        Int?
