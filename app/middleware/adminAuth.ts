@@ -3,7 +3,6 @@ import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { errorResponse } from "@/app/utils/apiResponse";
 import { userService } from "@/app/services/user.service";
 
-
 export const checkAdminRole = async (req: NextRequest): Promise<NextResponse | null> => {
   const userRoleId = req.headers.get("x-user-role");
   if (!userRoleId) {
@@ -15,7 +14,7 @@ export const checkAdminRole = async (req: NextRequest): Promise<NextResponse | n
 
   try {
     const role = await userService.getRoleById(parseInt(userRoleId));
-    console.log("🚀 ~ checkAdminRole ~ role:", role)
+    console.log("🚀 ~ checkAdminRole ~ role:", role);
     if (!role || !role.name.toLocaleLowerCase().includes("admin")) {
       return NextResponse.json(
         errorResponse("Unauthorized: Admin access required", HttpStatus.FORBIDDEN),

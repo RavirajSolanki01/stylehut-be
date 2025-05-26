@@ -40,10 +40,21 @@ async function main() {
         last_name: "Admin",
         role_id: superAdminRole.id,
         is_approved: true,
-        otp_verified: true
+        otp_verified: true,
       },
     });
   }
+
+  // Create admin settings category
+  await prisma.admin_settings_category.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      cardColor: "#d3e2fe",
+      fontColor: "#004300",
+    },
+  });
 }
 
 main()

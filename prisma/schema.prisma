@@ -42,7 +42,7 @@ model users {
   address      address[]
   cart         cart[]
   orders       orders[]
-  
+  shop_by_category shop_by_category[]
 
   coupon_usage coupon_usage[]
 }
@@ -107,6 +107,7 @@ model sub_category {
   category             category @relation(fields: [category_id], references: [id])
   sub_category_types   sub_category_type[]
   products             products[]
+  shop_by_category     shop_by_category[]
 }
 
 model sub_category_type {
@@ -462,3 +463,27 @@ model return_request {
   @@index([order_id])
 }
 
+model admin_settings_category {
+  id        Int     @id @default(1)
+  cardColor String  
+  fontColor String
+  updatedAt DateTime @updatedAt
+}
+
+model shop_by_category {
+  id          Int     @id @default(autoincrement())
+  name        String
+  image       String
+  user_id     Int
+  minDiscount Int
+  maxDiscount Int
+  sub_category_id Int
+  create_at   DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  //Relations
+  user        users   @relation(fields: [user_id], references: [id])
+  sub_category    sub_category @relation(fields: [sub_category_id], references: [id])
+
+  @@index([user_id])
+}

@@ -40,6 +40,9 @@ export async function GET(req: Request) {
 
     const subCategories = await prisma.sub_category.findMany({
       where,
+      include: {
+        category: true,
+      },
     });
 
     return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategories), {

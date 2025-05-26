@@ -8,51 +8,22 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || "";
-
-    if (!search) {
-      return NextResponse.json({ subCategories: [], brands: [] });
-    }
-
-    const [subCategoriesType, brands] = await Promise.all([
-      prisma.sub_category_type.findMany({
-        where: {
-          name: { contains: search, mode: "insensitive" },
-        },
-        select: {
-          id: true,
-          name: true,
-          category: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+    const [subCategoriesType, adminSettingsCategory] = await Promise.all([
+      prisma.shop_by_category.findMany({
+        include: {
           sub_category: {
-            select: {
-              id: true,
-              name: true,
+            include: {
+              category: true,
             },
           },
         },
-        take: 5,
       }),
-      prisma.brand.findMany({
-        where: {
-          name: { contains: search, mode: "insensitive" },
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-        take: 5,
-      }),
+      prisma.admin_settings_category.findFirst(),
     ]);
     return NextResponse.json(
       successResponse(COMMON_CONSTANTS.SUCCESS, {
         subCategoriesType,
-        brands,
+        adminSettingsCategory,
       }),
       {
         status: HttpStatus.OK,
