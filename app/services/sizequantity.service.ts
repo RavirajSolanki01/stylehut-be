@@ -54,6 +54,8 @@ export const sizeQuantityService = {
     product_id?: number;
     variant_id?: number;
     size_id?: number;
+    price?: number;
+    discount?: number;
     custom_product_id?: string;
   }[]) {
     return await Promise.all(
