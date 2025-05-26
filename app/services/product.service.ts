@@ -150,10 +150,10 @@ export const productService = {
           ...(maxPrice > 0 && { lte: maxPrice }),
         },
       }),
-      ...((minDiscount > 0 || maxDiscount < 100) && {
+      ...((minDiscount >= 0 || maxDiscount <= 100) && {
         discount: {
-          ...(minDiscount > 0 && { gte: minDiscount }),
-          ...(maxDiscount < 100 && { lte: maxDiscount }),
+          ...(minDiscount >= 0 && { gte: minDiscount }),
+          ...(maxDiscount <= 100 && { lte: maxDiscount }),
         },
       }),
     };
