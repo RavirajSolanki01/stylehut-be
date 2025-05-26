@@ -57,6 +57,7 @@ export async function middleware(req: NextRequest) {
     /^\/api\/header-search$/,
     /^\/api\/coupon\/code\/[^/]+$/,
     /^\/api\/coupon\/offer(?:\/.*)?$/,
+    /^\/api\/landing\/shop-by-category$/,
   ];
 
   // Define protected routes
@@ -98,6 +99,10 @@ export async function middleware(req: NextRequest) {
 
     "/api/orders",
     "/^\/api\/orders(\/.*)?$/",
+    "/api/admin-category-settings",
+    "/^\/api\/admin-category-settings(\/.*)?$/",
+    "/api/shop-by-category",
+    "/^\/api\/shop-by-category(\/.*)?$/",
   ];
 
   if (req.method === "OPTIONS") {
@@ -140,8 +145,7 @@ export async function middleware(req: NextRequest) {
       // Check if it's a GET request and matches public patterns
       if (method === "GET" && publicGetPatterns.some(pattern => pattern.test(path))) {
         return NextResponse.next();
-      }
-      else {
+      } else {
         return NextResponse.json(
           errorResponse("Unauthorized: No token provided", HttpStatus.UNAUTHORIZED),
           {
