@@ -11,7 +11,11 @@ export async function GET(req: Request) {
     const [subCategoriesType, adminSettingsCategory] = await Promise.all([
       prisma.shop_by_category.findMany({
         include: {
-          sub_category: true,
+          sub_category: {
+            include: {
+              category: true,
+            },
+          },
         },
       }),
       prisma.admin_settings_category.findFirst(),
