@@ -71,6 +71,8 @@ export const productService = {
       brand_id,
       minPrice,
       maxPrice,
+      minDiscount,
+      maxDiscount,
     } = params;
 
     let orderBy: ProductOrderBy;
@@ -146,6 +148,12 @@ export const productService = {
         price: {
           ...(minPrice > 0 && { gte: minPrice }),
           ...(maxPrice > 0 && { lte: maxPrice }),
+        },
+      }),
+      ...((minDiscount >= 0 || maxDiscount <= 100) && {
+        discount: {
+          ...(minDiscount >= 0 && { gte: minDiscount }),
+          ...(maxDiscount <= 100 && { lte: maxDiscount }),
         },
       }),
     };
@@ -326,7 +334,6 @@ export const productService = {
         size_data: true,
       },
     });
-  
 
     // Calculate average rating
     const averageRating =
