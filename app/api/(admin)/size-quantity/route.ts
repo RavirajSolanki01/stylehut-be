@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   if (!isBatch) {
     // Handle single entry
-    const { quantity, product_id, variant_id, size_id, custom_product_id } = body;
+    const { quantity, product_id, variant_id, size_id, custom_product_id, price, discount } = body;
 
     const createdSize = await sizeQuantityService.createSizeQuantities([{
       quantity,
@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
       variant_id,
       size_id,
       custom_product_id,
+      price,
+      discount
     }]);
 
     return NextResponse.json(createdSize);
@@ -33,7 +35,7 @@ export async function PATCH(request: NextRequest) {
 
   if (!isBatch) {
     // Handle single update
-    const { id, quantity, product_id, variant_id, size_id, custom_product_id } = body;
+    const { id, quantity, product_id, variant_id, size_id, custom_product_id, price , discount } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required for update' }, { status: 400 });
@@ -46,6 +48,8 @@ export async function PATCH(request: NextRequest) {
         product_id,
         variant_id,
         size_id,
+        price,
+        discount,
         custom_product_id,
       },
     ]);
