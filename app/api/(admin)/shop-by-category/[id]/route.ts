@@ -27,6 +27,56 @@ export async function PUT(request: NextRequest, { params }: Props) {
     const { id } = await params;
     const { fields, files } = await parseForm(request);
 
+    // Validate sub_category_id if provided
+    if (fields.sub_category_id) {
+      if (!(await subCategoryService.exists(parseInt(fields.sub_category_id[0])))) {
+        return NextResponse.json(errorResponse("Invalid sub_category_id", HttpStatus.BAD_REQUEST), {
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: fields.name?.[0].trim(),
+      minDiscount: fields.minDiscount ? parseInt(fields.minDiscount[0]) : undefined,
+      maxDiscount: fields.maxDiscount ? parseInt(fields.maxDiscount[0]) : undefined,
+      sub_category_id: fields.sub_category_id ? parseInt(fields.sub_category_id[0]) : undefined,
+    };
+
+    // Check for duplicate entry if any key fields are being updated
+    if (
+      updateData.name ||
+      updateData.sub_category_id ||
+      updateData.minDiscount ||
+      updateData.maxDiscount
+    ) {
+      const existingShop = await shopByCategoryService.getShopByCategory(parseInt(id));
+      if (!existingShop) {
+        return NextResponse.json(
+          errorResponse("Shop By Category not found", HttpStatus.NOT_FOUND),
+          { status: HttpStatus.NOT_FOUND }
+        );
+      }
+
+      const duplicate = await shopByCategoryService.checkDuplicateShop(parseInt(id), {
+        name: updateData.name || existingShop.name,
+        sub_category_id: updateData.sub_category_id || existingShop.sub_category_id,
+        minDiscount: updateData.minDiscount || existingShop.minDiscount,
+        maxDiscount: updateData.maxDiscount || existingShop.maxDiscount,
+      });
+
+      if (duplicate) {
+        return NextResponse.json(
+          errorResponse(
+            "A shop with the same name, subcategory, and discount range already exists",
+            HttpStatus.CONFLICT
+          ),
+          { status: HttpStatus.CONFLICT }
+        );
+      }
+    }
+
     const validation = await validateRequest(updateShopByCategorySchema, {
       type: "formdata",
       numberFields: ["minDiscount", "maxDiscount", "sub_category_id"],

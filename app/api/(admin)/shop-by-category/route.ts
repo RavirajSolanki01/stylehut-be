@@ -39,20 +39,47 @@ export async function POST(request: NextRequest) {
         status: HttpStatus.BAD_REQUEST,
       });
     }
-
-    const productData = {
-      name: fields.name?.[0] || "",
+    console.log(fields.name?.[0].trim(), "fields.name?.[0].trim()");
+    const shopByCategoryData = {
+      name: fields.name?.[0].trim() || "",
       minDiscount: parseInt(fields.minDiscount?.[0] || "0"),
       maxDiscount: parseInt(fields.maxDiscount?.[0] || "0"),
       sub_category_id: parseInt(fields.sub_category_id?.[0] || "0"),
       user_id: parseInt(request.headers.get("x-user-id") || "0"),
     };
 
+    console.log(shopByCategoryData, "shopByCategoryData");
+
+    // Check for duplicate entry
+    const existingShop = await shopByCategoryService.getShopByCategoryByCriteria({
+      name: shopByCategoryData.name,
+      sub_category_id: shopByCategoryData.sub_category_id,
+      minDiscount: shopByCategoryData.minDiscount,
+      maxDiscount: shopByCategoryData.maxDiscount,
+    });
+
+    console.log(existingShop, "existingShop");
+
+    if (existingShop) {
+      return NextResponse.json(
+        errorResponse(
+          "A shop with the same name, subcategory, and discount range already exists",
+          HttpStatus.CONFLICT
+        ),
+        { status: HttpStatus.CONFLICT }
+      );
+    }
+
     const images = Array.isArray(files.images) ? files.images : files.images ? [files.images] : [];
 
-    const product = await shopByCategoryService.createShopByCategory(productData, images);
+    const shopByCategory = await shopByCategoryService.createShopByCategory(
+      shopByCategoryData,
+      images
+    );
 
-    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, product), {
+    console.log(shopByCategory, "shopByCategory");
+
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, shopByCategory), {
       status: HttpStatus.OK,
     });
   } catch (error) {

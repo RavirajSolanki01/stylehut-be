@@ -5,11 +5,11 @@ export const createProductSchema = z.object({
   name: z
     .string()
     .min(2, "Product name must be at least 2 characters")
-    .max(40, 'Name must not exceed 40 characters'),
+    .max(40, "Name must not exceed 40 characters"),
   description: z
     .string()
     .min(1, "Description must be at least 10 characters")
-    .max(1024, 'Description must not exceed 1024 characters'),
+    .max(1024, "Description must not exceed 1024 characters"),
   price: z
     .number()
     .positive("Price must be a positive number")
@@ -80,6 +80,14 @@ export const productQuerySchema = z.object({
     .string()
     .optional()
     .transform(val => parseFloat(val || "0")),
+  minDiscount: z
+    .string()
+    .optional()
+    .transform(val => parseInt(val || "0")),
+  maxDiscount: z
+    .string()
+    .optional()
+    .transform(val => parseInt(val || "100")),
 });
 
 // Types inferred from schemas
