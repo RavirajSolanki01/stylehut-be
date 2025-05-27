@@ -25,6 +25,7 @@ model users {
   email        String   @unique                      // Unique email (required)
   role_id      Int?                                  // Foreign key for Role (optional)
   is_approved  Boolean  @default(false)              // Add approval status
+  is_active    Boolean  @default(true)              // Add user status for admin activation
   mobile       String?  @db.VarChar(10)              // Mobile number (optional)
   gender_id    Int?                                  // Foreign key for Gender (optional)
   birth_date   String?                               // Birth date (optional)
@@ -212,6 +213,8 @@ model size_quantity {
   size_data         size_data @relation(fields: [size_id], references: [id])
 
   products products[]
+  cart_items    cart_items[]
+  order_items   order_items[]
 }
 model size_data {
   id Int @id @default(autoincrement())
@@ -285,7 +288,7 @@ model cart_items {
   cart_id         Int
   product_id      Int
   quantity        Int       @default(1)
-  size            String?   @db.VarChar(10)  // For clothing items
+  size_quantity_id Int
   color           String?   @db.VarChar(20)  // For items with color variants
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
@@ -294,9 +297,11 @@ model cart_items {
   // Relations
   cart            cart      @relation(fields: [cart_id], references: [id])
   product         products  @relation(fields: [product_id], references: [id])
+  size_quantity   size_quantity @relation(fields: [size_quantity_id], references: [id]) // Updated relation
 
-  @@unique([cart_id, product_id, size, color])
+  @@unique([cart_id, product_id, size_quantity_id, color])
   @@index([product_id])
+  @@index([size_quantity_id])
 }
 
 model coupon {
@@ -409,7 +414,7 @@ model order_items {
   order_id        Int
   product_id      Int
   quantity        Int
-  size            String?   @db.VarChar(10)
+  size_quantity_id Int
   color           String?   @db.VarChar(20)
   price           Decimal   // Price at the time of order
   discount        Int?      // Discount at the time of order
@@ -420,9 +425,11 @@ model order_items {
   // Relations
   order           orders    @relation(fields: [order_id], references: [id])
   product         products  @relation(fields: [product_id], references: [id])
+  size_quantity   size_quantity @relation(fields: [size_quantity_id], references: [id]) // Updated relation
 
   @@index([order_id])
   @@index([product_id])
+  @@index([size_quantity_id])
 }
 
 model order_timeline {

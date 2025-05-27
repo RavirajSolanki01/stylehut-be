@@ -6,16 +6,39 @@ const prisma = new PrismaClient();
 
 export const cartService = {
   async addToCart(userId: number, data: AddToCartInput) {
-    const product = await prisma.products.findFirst({
-      where: { id: data.product_id, is_deleted: false }
-    });
+    const [product, sizeQuantity] = await Promise.all([
+      prisma.products.findFirst({
+        where: {
+          id: data.product_id,
+          is_deleted: false
+        }
+      }),
+      prisma.size_quantity.findFirst({
+        where: {
+          id: data.size_quantity_id,
+          is_deleted: false,
+          products: {
+            some: {
+              id: data.product_id
+            }
+          }
+        },
+        include: {
+          size_data: true
+        }
+      })
+    ]);
 
     if (!product) {
       throw new Error('Product not found');
     }
 
-    if (product.quantity < data.quantity) {
-      throw new Error('Insufficient stock');
+    if (!sizeQuantity) {
+      throw new Error("Selected size not available for this product");
+    }
+
+    if (sizeQuantity.quantity < data.quantity) {
+      throw new Error(`Only ${sizeQuantity.quantity} items available in size ${sizeQuantity.size_data.size}`);
     }
 
     // Get or create active cart
@@ -34,7 +57,7 @@ export const cartService = {
       where: {
         cart_id: cart.id,
         product_id: data.product_id,
-        size: data.size || null,
+        size_quantity_id: data.size_quantity_id,
         color: data.color || null,
         is_deleted: false
       }
@@ -51,6 +74,11 @@ export const cartService = {
               category: true,
               brand: true
             }
+          },
+          size_quantity: {
+            include: {
+              size_data: true
+            }
           }
         }
       });
@@ -62,7 +90,7 @@ export const cartService = {
         cart_id: cart.id,
         product_id: data.product_id,
         quantity: data.quantity,
-        size: data.size,
+        size_quantity_id: data.size_quantity_id,
         color: data.color
       },
       include: {
@@ -70,6 +98,11 @@ export const cartService = {
           include: {
             category: true,
             brand: true
+          }
+        },
+        size_quantity: {
+          include: {
+            size_data: true
           }
         }
       }
@@ -117,6 +150,11 @@ export const cartService = {
                 sub_category: true,
                 sub_category_type: true,
                 brand: true
+              }
+            },
+            size_quantity: {
+              include: {
+                size_data: true
               }
             }
           }
@@ -177,7 +215,7 @@ export const cartService = {
       throw new Error('Cart item not found');
     }
 
-    if (cartItem.product.quantity < data.quantity) {
+    if (cartItem.product.size_quantity_id < data.quantity) {
       throw new Error('Insufficient stock');
     }
 
@@ -531,7 +569,7 @@ export const cartService = {
         products: {
           select: {
             id: true,
-            quantity: true
+            size_quantity_id: true
           }
         }
       }

@@ -29,7 +29,15 @@ export const orderService = {
       include: {
         items: {
           where: { is_deleted: false },
-          include: { product: true }
+          include: { product: {
+            include: {
+              size_quantities: {
+                include: {
+                  size_data: true
+                }
+              }
+            }
+          } }
         }
       }
     });
@@ -62,9 +70,17 @@ export const orderService = {
         color: item.color,
         price: price,
         discount: item.product.discount,
-        final_price: discountedPrice
+        final_price: discountedPrice,
+        // size_quantities: item.size_quantities.map(sizeQuantity => ({
+        //   size_data_id: sizeQuantity.size_data_id,
+        //   quantity: sizeQuantity.quantity,
+        //   size_data: {
+        //     size: sizeQuantity.size_data.size,
+        //   }
+        // }))
       };
     });
+    console.log("🚀 ~ createOrder ~ orderItems:", orderItems)
 
     const finalAmount = totalAmount.minus(discountAmount).plus(shippingCharge);
 
@@ -143,14 +159,56 @@ export const orderService = {
       });
 
       // Update product quantities
-      await Promise.all(orderItems.map(item =>
-        tx.products.update({
-          where: { id: item.product_id },
-          data: { quantity: { decrement: item.quantity } }
-        })
-      ));
+      await Promise.all(orderItems.map(async (item) => {
+        if (!item.size) {
+          throw new Error(`Size is required for product ${item.product_id}`);
+        }
+
+        // Find the specific size_quantity record
+        const sizeQuantity = await tx.size_quantity.findFirst({
+          where: {
+            products: {
+              some: {
+                id: item.product_id
+              }
+            },
+            size_data: {
+              size: item.size
+            },
+            is_deleted: false
+          },
+          include: {
+            size_data: true
+          }
+        });
+        console.log("🚀 ~ awaitPromise.all ~ sizeQuantity:", sizeQuantity)
+      
+        if (!sizeQuantity) {
+          throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+        }
+      
+        if (sizeQuantity.quantity < item.quantity) {
+          throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
+        }
+      
+        // Update the size_quantity record
+        await tx.size_quantity.update({
+          where: {
+            id: sizeQuantity.id
+          },
+          data: {
+            quantity: {
+              decrement: item.quantity
+            }
+          }
+        });
+      }));
 
       return order;
+    }, {
+      timeout: 10000, // Increase timeout to 10 seconds
+      maxWait: 5000,  // Maximum time to wait for transaction to start
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted // Add isolation level
     });
   },
 
@@ -264,12 +322,49 @@ export const orderService = {
       });
 
       // Restore product quantities
-      await Promise.all(order.items.map(item =>
-        tx.products.update({
-          where: { id: item.product_id },
-          data: { quantity: { increment: item.quantity } }
-        })
-      ));
+      await Promise.all(order.items.map(async (item) => {
+        if (!item.size) {
+          throw new Error(`Size is required for product ${item.product_id}`);
+        }
+
+        // Find the specific size_quantity record
+        const sizeQuantity = await tx.size_quantity.findFirst({
+          where: {
+            products: {
+              some: {
+                id: item.product_id
+              }
+            },
+            size_data: {
+              size: item.size
+            },
+            is_deleted: false
+          },
+          include: {
+            size_data: true
+          }
+        });
+      
+        if (!sizeQuantity) {
+          throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+        }
+      
+        if (sizeQuantity.quantity < item.quantity) {
+          throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
+        }
+      
+        // Update the size_quantity record
+        await tx.size_quantity.update({
+          where: {
+            id: sizeQuantity.id
+          },
+          data: {
+            quantity: {
+              decrement: item.quantity
+            }
+          }
+        });
+      }));
 
       return updatedOrder;
     });
@@ -418,12 +513,49 @@ export const orderService = {
   
       // Handle cancellation
       if (data.status === OrderStatus.CANCELLED) {
-        await Promise.all(order.items.map(item =>
-          tx.products.update({
-            where: { id: item.product_id },
-            data: { quantity: { increment: item.quantity } }
-          })
-        ));
+        await Promise.all(order.items.map(async (item) => {
+          if (!item.size) {
+            throw new Error(`Size is required for product ${item.product_id}`);
+          }
+  
+          // Find the specific size_quantity record
+          const sizeQuantity = await tx.size_quantity.findFirst({
+            where: {
+              products: {
+                some: {
+                  id: item.product_id
+                }
+              },
+              size_data: {
+                size: item.size
+              },
+              is_deleted: false
+            },
+            include: {
+              size_data: true
+            }
+          });
+        
+          if (!sizeQuantity) {
+            throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+          }
+        
+          if (sizeQuantity.quantity < item.quantity) {
+            throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
+          }
+        
+          // Update the size_quantity record
+          await tx.size_quantity.update({
+            where: {
+              id: sizeQuantity.id
+            },
+            data: {
+              quantity: {
+                decrement: item.quantity
+              }
+            }
+          });
+        }));
       }
   
       return updatedOrder;
