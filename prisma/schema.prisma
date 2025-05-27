@@ -109,6 +109,7 @@ model sub_category {
   sub_category_types   sub_category_type[]
   products             products[]
   shop_by_category     shop_by_category[]
+  brands               brand_sub_category[]
 }
 
 model sub_category_type {
@@ -137,6 +138,21 @@ model brand {
 
   //Relations
   products             products[]
+  subCategories        brand_sub_category[]
+}
+
+model brand_sub_category {
+  id          Int      @id @default(autoincrement())
+  brand_id    Int
+  sub_category_id Int
+  create_at   DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  brand       brand    @relation(fields: [brand_id], references: [id])
+  sub_category sub_category @relation(fields: [sub_category_id], references: [id])
+
+  @@unique([brand_id, sub_category_id])
 }
 
 model gender {

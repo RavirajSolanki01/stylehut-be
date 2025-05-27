@@ -8,6 +8,7 @@ import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { createBrandSchema } from "@/app/utils/validationSchema/brand.validation";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { checkNameConflict } from "@/app/utils/helper";
+import { subCategoryService } from "@/app/services/subCategory.service";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -35,39 +36,68 @@ export async function GET(request: NextRequest, { params }: Props) {
 }
 
 export async function PUT(request: NextRequest, { params }: Props) {
-
   // Check admin authorization
   const authResponse = await checkAdminRole(request);
   if (authResponse) return authResponse;
 
   const validation = await validateRequest(createBrandSchema)(request);
-  if ('status' in validation) {
+  if ("status" in validation) {
     return validation;
   }
 
   try {
     const { id } = await params;
-    const nameExist = await checkNameConflict(validation.validatedData.name, "brand");
+    const brandId = Number(id);
+    // Check for name conflict with other brands if name is being updated
 
-    if (nameExist.hasSameName && nameExist.message) {
-      return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
+    const existingBrand = await brandService.getBrandById(brandId);
+    if (!existingBrand) {
+      return NextResponse.json(errorResponse("Brand not found", HttpStatus.BAD_REQUEST), {
         status: HttpStatus.BAD_REQUEST,
       });
     }
 
-    const brand = await brandService.updateBrand(Number(id), validation.validatedData as UpdateBrandDto);
+    if (validation.validatedData.name) {
+      const nameConflict = await checkNameConflict(
+        validation.validatedData.name,
+        "brand",
+        { excludeId: brandId } // Pass the current brand ID to exclude it from the conflict check
+      );
+
+      if (nameConflict.hasSameName && nameConflict.message) {
+        return NextResponse.json(errorResponse(nameConflict.message, HttpStatus.BAD_REQUEST), {
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+    }
+
+    const subCategories = await subCategoryService.getSubCategoryByCategoryIds(
+      validation.validatedData.subCategories
+    );
+
+    if (subCategories.length !== validation.validatedData.subCategories.length) {
+      return NextResponse.json(
+        errorResponse("Please pass valid subcategory ids", HttpStatus.NOT_FOUND),
+        {
+          status: HttpStatus.NOT_FOUND,
+        }
+      );
+    }
+
+    const brand = await brandService.updateBrand(
+      brandId,
+      validation.validatedData as UpdateBrandDto
+    );
     return NextResponse.json(
       { message: COMMON_CONSTANTS.SUCCESS, data: brand },
       { status: HttpStatus.OK }
     );
-
   } catch (error: any) {
     console.error(error);
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        errorResponse("Gender already exists", HttpStatus.CONFLICT),
-        { status: HttpStatus.CONFLICT }
-      );
+    if (error.code === "P2002") {
+      return NextResponse.json(errorResponse("Gender already exists", HttpStatus.CONFLICT), {
+        status: HttpStatus.CONFLICT,
+      });
     }
 
     return NextResponse.json(
@@ -95,4 +125,3 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     );
   }
 }
- 

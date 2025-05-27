@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 export const brandService = {
   // Create brand
   async createBrand(data: CreateBrandDto) {
+    const { id, subCategories = [], ...cleanedData } = data;
 
     const existingBrand = await prisma.brand.findFirst({
       where: {
-        name: data.name,
+        name: cleanedData.name,
         is_deleted: true,
       },
     });
@@ -24,13 +25,61 @@ export const brandService = {
       });
     }
 
-    const { id, ...cleanedData } = data;
-    
-    return await prisma.brand.create({
-      data: {
-        ...cleanedData,
-        is_deleted: false,
-      },
+    return prisma.$transaction(async prisma => {
+      // Verify all sub-category IDs exist
+      if (subCategories.length > 0) {
+        const existingSubCategories = await prisma.sub_category.findMany({
+          where: {
+            id: { in: subCategories },
+            is_deleted: false,
+          },
+          select: { id: true },
+        });
+
+        // Check if all provided sub-category IDs exist and are not deleted
+        const existingSubCategoryIds = existingSubCategories.map(sc => sc.id);
+        const invalidSubCategoryIds = subCategories.filter(
+          id => !existingSubCategoryIds.includes(id)
+        );
+
+        if (invalidSubCategoryIds.length > 0) {
+          throw new Error(
+            `The following sub-category IDs do not exist or are deleted: ${invalidSubCategoryIds.join(", ")}`
+          );
+        }
+      }
+
+      // Create the brand
+      const brand = await prisma.brand.create({
+        data: {
+          name: cleanedData.name,
+          description: cleanedData.description,
+          is_deleted: false,
+        },
+      });
+
+      // Create brand-subcategory associations
+      if (subCategories.length > 0) {
+        await prisma.brand_sub_category.createMany({
+          data: subCategories.map(subCatId => ({
+            brand_id: brand.id,
+            sub_category_id: subCatId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // Return the brand with its subcategories
+      return await prisma.brand.findUnique({
+        where: { id: brand.id },
+        include: {
+          subCategories: {
+            include: {
+              sub_category: true,
+            },
+          },
+        },
+      });
     });
   },
 
@@ -76,12 +125,48 @@ export const brandService = {
 
   // Update brand
   async updateBrand(id: number, data: UpdateBrandDto) {
-    return await prisma.brand.update({
-      where: { id },
-      data: {
-        ...data,
-        updated_at: new Date(),
-      },
+    const { subCategories, ...brandData } = data;
+
+    return await prisma.$transaction(async prisma => {
+      // Update the brand details
+      const updatedBrand = await prisma.brand.update({
+        where: { id },
+        data: {
+          ...brandData,
+          updated_at: new Date(),
+        },
+      });
+
+      // If subCategories are provided, update the associations
+      if (subCategories) {
+        // Remove existing associations
+        await prisma.brand_sub_category.deleteMany({
+          where: { brand_id: id },
+        });
+
+        // Create new associations if there are any sub-categories
+        if (subCategories.length > 0) {
+          await prisma.brand_sub_category.createMany({
+            data: subCategories.map(subCatId => ({
+              brand_id: id,
+              sub_category_id: subCatId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      // Return the updated brand with its subcategories
+      return await prisma.brand.findUnique({
+        where: { id },
+        include: {
+          subCategories: {
+            include: {
+              sub_category: true,
+            },
+          },
+        },
+      });
     });
   },
 
@@ -101,8 +186,8 @@ export const brandService = {
     const count = await prisma.brand.count({
       where: {
         id: Number(id),
-        is_deleted: false
-      }
+        is_deleted: false,
+      },
     });
     return count > 0;
   },
