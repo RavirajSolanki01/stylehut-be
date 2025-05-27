@@ -10,7 +10,8 @@ export const userService = {
     sortBy: string,
     order: "asc" | "desc",
     roleId?: number,
-    genderId?: number
+    genderId?: number,
+    role?: string
   ) {
 
     let orderBy: any;
@@ -37,6 +38,11 @@ export const userService = {
       }),
       ...(roleId && { role_id: roleId }),
       ...(genderId && { gender_id: genderId }),
+      ...(role && {
+        role: {
+          name: role
+        }
+      }),
     };
 
     const [data, total] = await Promise.all([

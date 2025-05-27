@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const search = searchParams.get("search") || "";
+    const role = searchParams.get("role") || "";
     const sortBy = searchParams.get("sortBy") || "create_at";
     const order = (searchParams.get("order") as "asc" | "desc") || "desc";
     
@@ -32,7 +33,8 @@ export async function GET(request: NextRequest) {
       sortBy,
       order,
       roleId,
-      genderId
+      genderId,
+      role
     );
 
     return NextResponse.json(
