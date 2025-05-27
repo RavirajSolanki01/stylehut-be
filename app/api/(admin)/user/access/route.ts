@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest, { params }: Props) {
     }
 
   try {
-		const { userId } = await request.json();
+		const { userId, ActiveStatus } = await request.json();
     if (!userId) {
       return NextResponse.json(
         errorResponse("User ID is required", HttpStatus.BAD_REQUEST),
@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: Props) {
         { status: HttpStatus.UNAUTHORIZED }
       );
     }
-		const updateUserStatus = await userService.updateUserStatus(Number(userId));
+		const updateUserStatus = await userService.updateUserStatus(Number(userId), ActiveStatus);
 
 		return NextResponse.json(
 			successResponse( !updateUserStatus?.is_active ? "Admin user activated successfully" : "Admin user deactivated successfully", updateUserStatus),
