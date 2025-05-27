@@ -78,17 +78,36 @@ export const userService = {
   async getUserById(id: number) {
     return prisma.users.findUnique({
       where: { id, is_deleted: false },
+      include: {
+        role: true,
+      }
     });
   },
 
-  async exists(id?: string | number): Promise<boolean> {
+  async exists(id?: string | number, role?: string): Promise<boolean> {
     if (!id) return false;
+    let where: {
+      id: number;
+      is_deleted: boolean;
+      role?: { name: string };
+    } = {
+      id: Number(id),
+      is_deleted: false
+    }
+    if (role) { where['role'] = { name: role }; }
     const count = await prisma.users.count({
-      where: {
-        id: Number(id),
-        is_deleted: false
-      }
+      where: where
     });
     return count > 0;
   },
+
+  async updateUserStatus(userId: number, ActiveStatus: boolean = true) {
+
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: { is_active: ActiveStatus },
+    });
+    return updatedUser;
+  },
+
 };

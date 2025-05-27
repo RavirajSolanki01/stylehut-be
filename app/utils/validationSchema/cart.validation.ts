@@ -7,7 +7,7 @@ export const addToCartSchema = z.object({
   quantity: z.number({
     required_error: "Quantity is required"
   }).min(1, "Quantity must be at least 1"),
-  size: z.string().optional(),
+  size_quantity_id: z.number(),
   color: z.string().optional(),
 });
 
