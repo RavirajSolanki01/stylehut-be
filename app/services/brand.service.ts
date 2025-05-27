@@ -91,8 +91,6 @@ export const brandService = {
     sortBy = "create_at",
     order: "asc" | "desc" = "desc"
   ) {
-    console.log("order by", sortBy, order);
-    const orderBy = { [sortBy]: order };
     const where = {
       is_deleted: false,
       ...(search
@@ -105,12 +103,30 @@ export const brandService = {
         : {}),
     };
 
-    return await prisma.brand.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { [sortBy]: order },
-    });
+    const [brands, total] = await Promise.all([
+      prisma.brand.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { [sortBy]: order },
+        include: {
+          subCategories: {
+            include: {
+              sub_category: true,
+            },
+          },
+        },
+      }),
+      prisma.brand.count({ where }),
+    ]);
+
+    return {
+      data: brands,
+      total,
+      page: Math.floor(skip / take) + 1,
+      limit: take,
+      totalPages: Math.ceil(total / take),
+    };
   },
 
   // Get brand by id
@@ -119,6 +135,13 @@ export const brandService = {
       where: {
         id,
         is_deleted: false,
+      },
+      include: {
+        subCategories: {
+          include: {
+            sub_category: true,
+          },
+        },
       },
     });
   },
@@ -129,7 +152,7 @@ export const brandService = {
 
     return await prisma.$transaction(async prisma => {
       // Update the brand details
-      const updatedBrand = await prisma.brand.update({
+      await prisma.brand.update({
         where: { id },
         data: {
           ...brandData,
