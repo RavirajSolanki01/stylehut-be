@@ -15,8 +15,9 @@ export const shopByCategoryService = {
 
       return await prisma.shop_by_category.create({
         data: {
-          maxDiscount: data.maxDiscount || 0,
           ...data,
+          maxDiscount: data.maxDiscount || 100,
+          minDiscount: data.minDiscount || 0,
           image: imageUrls,
         },
         include: {
@@ -78,6 +79,54 @@ export const shopByCategoryService = {
     return { data, total };
   },
 
+  async getShopByCategoryByCriteria(criteria: {
+    name: string;
+    sub_category_id: number;
+    minDiscount: number;
+    maxDiscount: number;
+  }) {
+    const shopByCategory = await prisma.shop_by_category.findFirst({
+      where: {
+        name: criteria.name,
+        sub_category_id: criteria.sub_category_id,
+        minDiscount: criteria.minDiscount,
+        maxDiscount: criteria.maxDiscount,
+      },
+      include: {
+        sub_category: true,
+      },
+    });
+
+    return shopByCategory;
+  },
+
+  async checkDuplicateShop(
+    id: number,
+    criteria: {
+      name: string;
+      sub_category_id: number;
+      minDiscount: number;
+      maxDiscount: number;
+    }
+  ) {
+    const shopByCategory = await prisma.shop_by_category.findFirst({
+      where: {
+        name: criteria.name,
+        sub_category_id: criteria.sub_category_id,
+        minDiscount: criteria.minDiscount,
+        maxDiscount: criteria.maxDiscount,
+        NOT: {
+          id,
+        },
+      },
+      include: {
+        sub_category: true,
+      },
+    });
+
+    return shopByCategory;
+  },
+
   async getShopByCategory(id: number) {
     const shopByCategory = await prisma.shop_by_category.findFirst({
       where: {
@@ -100,11 +149,33 @@ export const shopByCategoryService = {
       // Get existing shop by category
       const existingProduct = await prisma.shop_by_category.findUnique({
         where: { id },
-        select: { image: true },
+        select: {
+          name: true,
+          sub_category_id: true,
+          minDiscount: true,
+          maxDiscount: true,
+          image: true,
+        },
       });
 
       if (!existingProduct) {
         throw new Error("Shop by category not found");
+      }
+
+      // Check for duplicate entry
+      if (data.name || data.sub_category_id || data.minDiscount || data.maxDiscount) {
+        const duplicate = await shopByCategoryService.checkDuplicateShop(id, {
+          name: data.name || existingProduct.name,
+          sub_category_id: data.sub_category_id || existingProduct.sub_category_id,
+          minDiscount: data.minDiscount || existingProduct.minDiscount,
+          maxDiscount: data.maxDiscount || existingProduct.maxDiscount,
+        });
+
+        if (duplicate) {
+          throw new Error(
+            "A shop with the same name, subcategory, and discount range already exists"
+          );
+        }
       }
 
       let newImageUrl = "";
