@@ -28,10 +28,23 @@ export type UpdateCartInput = z.infer<typeof updateCartSchema>;
 export type CartQueryInput = z.infer<typeof cartQuerySchema>;
 
 export const addWishlistToCartSchema = z.object({
-  product_ids: z.array(z.number()).min(1, "Select at least one product")
+  product_ids: z.array(z.object({
+    id: z.number({
+      required_error: "Product ID is required"
+    }).positive("Product ID must be positive"),
+    size_quantity_id: z.number({
+      required_error: "Size is required"
+    }).min(1, "Size must be at least 1"),
+  })).min(1, "Select at least one product")
 });
 
 export type AddWishlistToCartInput = z.infer<typeof addWishlistToCartSchema>;
+
+export const cartToWishlistSchema = z.object({
+  product_ids: z.array(z.number()).min(1, "Select at least one product")
+});
+
+export type CartToWishlistInput = z.infer<typeof cartToWishlistSchema>;
 
 export const removeFromCartSchema = z.object({
   product_ids: z.array(z.number()).min(1, "Select at least one product")

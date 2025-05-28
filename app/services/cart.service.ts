@@ -208,14 +208,14 @@ export const cartService = {
         },
         is_deleted: false
       },
-      include: { product: true }
+      include: { product: true, size_quantity: true }
     });
 
     if (!cartItem) {
       throw new Error('Cart item not found');
     }
 
-    if (cartItem.product.size_quantity_id < data.quantity) {
+    if (cartItem.size_quantity.quantity < data.quantity) {
       throw new Error('Insufficient stock');
     }
 
@@ -557,19 +557,19 @@ export const cartService = {
     };
   },
 
-  async addWishlistItemsToCart(userId: number, productIds: number[]) {
+  async addWishlistItemsToCart(userId: number, productIds: {id: number, size_quantity_id: number}[]) {
     // Get active wishlisted items
     const wishlistedItems = await prisma.wishlist.findMany({
       where: {
         user_id: userId,
-        product_id: { in: productIds },
+        product_id: { in: productIds.map(p => p.id) },
         is_deleted: false
       },
       include: {
         products: {
           select: {
             id: true,
-            size_quantity_id: true
+            size_quantities: true
           }
         }
       }
@@ -581,7 +581,7 @@ export const cartService = {
 
     // Verify all requested products exist in wishlist
     const foundProductIds = wishlistedItems.map(item => item.product_id);
-    const missingProductIds = productIds.filter(id => !foundProductIds.includes(id));
+    const missingProductIds = productIds.filter(id => !foundProductIds.includes(id.id));
     
     if (missingProductIds.length) {
       throw new Error(`Products not found in wishlist: ${missingProductIds.join(', ')}`);
@@ -599,13 +599,14 @@ export const cartService = {
     }
 
     // Add each wishlisted item to cart
-    const cartItemPromises = wishlistedItems.map(async (item) => {
+    const cartItemPromises = wishlistedItems.map(async (item, index) => {
       // Check if item already exists in cart
       const existingCartItem = await prisma.cart_items.findFirst({
         where: {
           cart_id: cart.id,
           product_id: item.product_id,
-          is_deleted: false
+          is_deleted: false,
+          size_quantity_id: productIds[index].size_quantity_id,
         }
       });
 
@@ -622,7 +623,8 @@ export const cartService = {
         data: {
           cart_id: cart.id,
           product_id: item.product_id,
-          quantity: 1
+          quantity: 1,
+          size_quantity_id: productIds[index].size_quantity_id,
         }
       });
     });

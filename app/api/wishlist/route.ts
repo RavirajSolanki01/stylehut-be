@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get("pageSize"),
       sortBy: searchParams.get("sortBy") as any || "created_at",
       order: searchParams.get("order") as any || "desc",
-			// search: searchParams.get("search") || "",
+			search: searchParams.get("search") || "",
     });
 
     const { data, total } = await wishlistService.getWishlist(
