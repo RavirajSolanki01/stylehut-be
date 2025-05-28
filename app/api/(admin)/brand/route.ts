@@ -72,10 +72,10 @@ export async function GET(req: Request) {
     const skip = (page - 1) * pageSize;
 
     const brands = await brandService.getAllBrands(skip, pageSize, search, sortBy, order);
-    const total = brands.length;
+    const total = brands.total;
 
     return NextResponse.json(
-      paginatedResponse(COMMON_CONSTANTS.SUCCESS, brands, page, pageSize, total),
+      paginatedResponse(COMMON_CONSTANTS.SUCCESS, brands.data, page, pageSize, total),
       {
         status: HttpStatus.OK,
       }
