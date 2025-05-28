@@ -3,7 +3,7 @@ import { cartService } from "@/app/services/cart.service";
 import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
-import { addWishlistToCartSchema } from "@/app/utils/validationSchema/cart.validation";
+import { addWishlistToCartSchema, cartToWishlistSchema } from "@/app/utils/validationSchema/cart.validation";
 import { validateRequest } from "@/app/middleware/validateRequest";
 
 // Add all wishlisted items to cart
@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
 
   try {
 
-    const validation = await validateRequest(addWishlistToCartSchema)(request);
+    const validation = await validateRequest(cartToWishlistSchema)(request);
     if ('status' in validation) {
       return validation;
     }
