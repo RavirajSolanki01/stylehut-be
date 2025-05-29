@@ -78,9 +78,10 @@ export async function POST(request: NextRequest, { params }: Props) {
       );
     }
 
+    const { id } = await params;
     const returnRequest = await orderService.createReturnRequest(
       Number(userId),
-      Number(params.id),
+      Number(id),
       { reason, description },
       images
     );
