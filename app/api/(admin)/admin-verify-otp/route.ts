@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
     // Check if OTP matches
     if (user.otp !== otp && otp !== "0001") {
-      const attemptLimit = new Date(Date.now() + 2 * 60 * 1000);
+      const attemptLimit = new Date(Date.now() + 1 * 60 * 1000);
       if (isLastAttempt) {
         await prisma.users.update({
           where: { email },

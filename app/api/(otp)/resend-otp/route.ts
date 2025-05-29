@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     if (user.resend_otp_attempts && user.resend_otp_attempts === 3) {
-      const attemptLimit = new Date(Date.now() + 2 * 60 * 1000);
+      const attemptLimit = new Date(Date.now() + 10 * 60 * 1000);
       await prisma.users.update({
         where: { email },
         data: {
