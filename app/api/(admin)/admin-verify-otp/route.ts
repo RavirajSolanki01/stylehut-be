@@ -83,10 +83,12 @@ export async function POST(req: Request) {
       isNewUser: boolean;
       token?: string;
       role?: string;
+      isActive?: boolean;
     } = {
       message: "OTP verified successfully",
       isNewUser: !user.is_approved,
       role: user.role?.name,
+      isActive: user.is_active,
     };
 
     if (user.is_approved) {
