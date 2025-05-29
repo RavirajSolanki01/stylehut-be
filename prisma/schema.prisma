@@ -31,6 +31,9 @@ model users {
   birth_date   String?                               // Birth date (optional)
   otp          String?                               // Store OTP temporarily
   otp_verified Boolean  @default(false)              // OTP verified status
+  resend_otp_attempts  Int?
+  resend_otp_limit_expires_at DateTime?
+  otp_limit_expires_at DateTime?  
   create_at    DateTime @default(now())              // Timestamp when created
   updated_at   DateTime @updatedAt                   // Auto-updated timestamp
   is_deleted   Boolean  @default(false)              // Soft delete flag
