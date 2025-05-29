@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
 const prisma = new PrismaClient();
 
 type Props = {
@@ -20,14 +21,25 @@ export async function GET(request: NextRequest, { params }: Props) {
 			}
 			console.log("🚀 ~ GET ~ user:", user)
 
+			// Generate Auth Token (JWT)
+			const token = jwt.sign(
+				{ userId: user.id, email: user.email, role: user.role_id }, // Payload
+				process.env.JWT_SECRET!, // Secret Key
+				{ expiresIn: "7d" } // Token Expiry
+			);
+
 			let responseData: {
 				message: string;
 				is_approved: boolean;
 				role?: string;
+				token?: string | null;
+				isActive:boolean;
 			} = {
 				message: user.is_approved ? "User is already approved!" : "User is not approved yet!",
 				is_approved: user.is_approved,
-				role: user.role?.name
+				role: user.role?.name,
+				token: user.is_approved ? token : null,
+				isActive: user.is_active
 			}
 	
 			return NextResponse.json({ ...responseData }, { status: 200 });
