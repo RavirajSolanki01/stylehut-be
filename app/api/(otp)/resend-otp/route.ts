@@ -52,10 +52,10 @@ export async function POST(req: Request) {
       },
     });
 
-    // const isOtpSent = await sendOTPEmail(email, otp);
-    // if (!isOtpSent) {
-    //   return NextResponse.json({ message: "Failed to send OTP" }, { status: 500 });
-    // }
+    const isOtpSent = await sendOTPEmail(email, otp);
+    if (!isOtpSent) {
+      return NextResponse.json({ message: "Failed to send OTP" }, { status: 500 });
+    }
 
     return NextResponse.json({ message: "OTP sent to email." }, { status: 200 });
   } catch (error) {
