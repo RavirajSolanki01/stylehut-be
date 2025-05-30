@@ -29,15 +29,14 @@ export const orderService = {
       include: {
         items: {
           where: { is_deleted: false },
-          include: { product: {
-            include: {
-              size_quantities: {
-                include: {
-                  size_data: true
-                }
+          include: { 
+            product: true, 
+            size_quantity: {
+              include: {
+                size_data: true
               }
             }
-          } }
+          },
         }
       }
     });
@@ -47,8 +46,23 @@ export const orderService = {
     }
 
     // Calculate totals
-    let totalAmount = new Decimal(0);
-    let discountAmount = new Decimal(0);
+    const totalAmount = cart.items.reduce((sum, item) => {
+      const price = new Decimal(item.product.price.toString());
+      const discount = new Decimal(item.product.discount || 0);
+      const discountedPrice = price.minus(
+        price.times(discount.dividedBy(100))
+      );
+      
+      return sum + discountedPrice.times(item.quantity).toNumber();
+    }, 0);
+    const discountAmount = cart.items.reduce((sum, item) => {
+      const price = new Decimal(item.product.price.toString());
+      const discount = new Decimal(item.product.discount || 0);
+      const discountedPrice = price.minus(
+        price.times(discount.dividedBy(100))
+      );
+      return sum + (price.minus(discountedPrice)).times(item.quantity).toNumber();
+    }, 0);
     const shippingCharge = new Decimal(99); // You can make this configurable
 
     const orderItems = cart.items.map(item => {
@@ -58,35 +72,22 @@ export const orderService = {
         price.times(discount.dividedBy(100))
       );
       
-      totalAmount = totalAmount.plus(price.times(item.quantity));
-      discountAmount = discountAmount.plus(
-        price.times(discount.dividedBy(100)).times(item.quantity)
-      );
-
       return {
         product_id: item.product_id,
         quantity: item.quantity,
-        size: item.size,
         color: item.color,
         price: price,
         discount: item.product.discount,
         final_price: discountedPrice,
-        // size_quantities: item.size_quantities.map(sizeQuantity => ({
-        //   size_data_id: sizeQuantity.size_data_id,
-        //   quantity: sizeQuantity.quantity,
-        //   size_data: {
-        //     size: sizeQuantity.size_data.size,
-        //   }
-        // }))
+        size_quantity_id: item.size_quantity_id,
       };
     });
-    console.log("🚀 ~ createOrder ~ orderItems:", orderItems)
 
-    const finalAmount = totalAmount.minus(discountAmount).plus(shippingCharge);
+    const finalAmount = totalAmount + shippingCharge.toNumber();
 
     // Generate order number
     const orderCount = await prisma.orders.count();
-    const orderNumber = `MYN-${new Date().getFullYear()}-${(orderCount + 1).toString().padStart(4, '0')}`;
+    const orderNumber = `ORD-${new Date().getFullYear()}-${(orderCount + 1).toString().padStart(4, '0')}`;
 
     // Create order using transaction
     return await prisma.$transaction(async (tx) => {
@@ -94,22 +95,14 @@ export const orderService = {
        // First soft delete cart items
        await tx.cart_items.updateMany({
         where: { 
-          cart: {
-            user_id: userId,
-            status: 'ACTIVE',
-            is_deleted: false
-          },
+          cart: { user_id: userId, status: 'ACTIVE', is_deleted: false },
           is_deleted: false 
         },
         data: { is_deleted: true }
       });
       
       await tx.cart.updateMany({
-        where: { 
-          user_id: userId,
-          status: 'ACTIVE',
-          is_deleted: false
-        },
+        where: { user_id: userId, status: 'ACTIVE', is_deleted: false },
         data: { 
           status: 'CONVERTED_TO_ORDER',
           is_deleted: true,
@@ -149,7 +142,8 @@ export const orderService = {
                   sub_category_type: true,
                   brand: true
                 }
-              }
+              },
+              size_quantity: true
             }
           },
           shipping_address: true,
@@ -160,35 +154,27 @@ export const orderService = {
 
       // Update product quantities
       await Promise.all(orderItems.map(async (item) => {
-        if (!item.size) {
+        if (!item.size_quantity_id) {
           throw new Error(`Size is required for product ${item.product_id}`);
         }
 
         // Find the specific size_quantity record
         const sizeQuantity = await tx.size_quantity.findFirst({
           where: {
-            products: {
-              some: {
-                id: item.product_id
-              }
-            },
-            size_data: {
-              size: item.size
-            },
+            id: item.size_quantity_id,
             is_deleted: false
           },
           include: {
             size_data: true
           }
         });
-        console.log("🚀 ~ awaitPromise.all ~ sizeQuantity:", sizeQuantity)
       
         if (!sizeQuantity) {
-          throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+          throw new Error(`Size ${item.size_quantity_id} not found for product ${item.product_id}`);
         }
       
         if (sizeQuantity.quantity < item.quantity) {
-          throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
+          throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size_quantity_id}`);
         }
       
         // Update the size_quantity record
@@ -238,7 +224,14 @@ export const orderService = {
               product: {
                 include: {
                   category: true,
+                  sub_category: true,
+                  sub_category_type: true,
                   brand: true
+                }
+              },
+              size_quantity: {
+                include: {
+                  size_data: true
                 }
               }
             }
@@ -270,7 +263,14 @@ export const orderService = {
             product: {
               include: {
                 category: true,
+                sub_category: true,
+                sub_category_type: true,
                 brand: true
+              }
+            },
+            size_quantity: {
+              include: {
+                size_data: true
               }
             }
           }
@@ -323,21 +323,14 @@ export const orderService = {
 
       // Restore product quantities
       await Promise.all(order.items.map(async (item) => {
-        if (!item.size) {
+        if (!item.size_quantity_id) {
           throw new Error(`Size is required for product ${item.product_id}`);
         }
 
         // Find the specific size_quantity record
         const sizeQuantity = await tx.size_quantity.findFirst({
           where: {
-            products: {
-              some: {
-                id: item.product_id
-              }
-            },
-            size_data: {
-              size: item.size
-            },
+            id: item.size_quantity_id,
             is_deleted: false
           },
           include: {
@@ -346,12 +339,12 @@ export const orderService = {
         });
       
         if (!sizeQuantity) {
-          throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+          throw new Error(`Size ${item.size_quantity_id} not found for product ${item.product_id}`);
         }
       
-        if (sizeQuantity.quantity < item.quantity) {
-          throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
-        }
+        // if (sizeQuantity.quantity < item.quantity) {
+        //   throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size_quantity_id}`);
+        // }
       
         // Update the size_quantity record
         await tx.size_quantity.update({
@@ -360,7 +353,7 @@ export const orderService = {
           },
           data: {
             quantity: {
-              decrement: item.quantity
+              increment: item.quantity
             }
           }
         });
@@ -371,8 +364,6 @@ export const orderService = {
   },
 
   async createReturnRequest(userId: number, orderId: number, data: CreateReturnRequestInput, files: File[]) {
-    // Upload images to Cloudinary
-    const imageUrls = files && files.length > 0 ? await Promise.all(files.map((file) => uploadToCloudinary(file.filepath))) : [];
     
     const order = await this.getOrderById(userId, orderId);
 
@@ -387,6 +378,9 @@ export const orderService = {
     if (daysSinceDelivery > 7) {
       throw new Error('Return window has expired');
     }
+
+    // Upload images to Cloudinary
+    const imageUrls = files && files.length > 0 ? await Promise.all(files.map((file) => uploadToCloudinary(file.filepath))) : [];
 
     return await prisma.$transaction(async (tx) => {
       // Create return request
@@ -514,21 +508,14 @@ export const orderService = {
       // Handle cancellation
       if (data.status === OrderStatus.CANCELLED) {
         await Promise.all(order.items.map(async (item) => {
-          if (!item.size) {
+          if (!item.size_quantity_id) {
             throw new Error(`Size is required for product ${item.product_id}`);
           }
   
           // Find the specific size_quantity record
           const sizeQuantity = await tx.size_quantity.findFirst({
             where: {
-              products: {
-                some: {
-                  id: item.product_id
-                }
-              },
-              size_data: {
-                size: item.size
-              },
+              id: item.size_quantity_id,
               is_deleted: false
             },
             include: {
@@ -537,11 +524,11 @@ export const orderService = {
           });
         
           if (!sizeQuantity) {
-            throw new Error(`Size ${item.size} not found for product ${item.product_id}`);
+            throw new Error(`Size ${item.size_quantity_id} not found for product ${item.product_id}`);
           }
         
           if (sizeQuantity.quantity < item.quantity) {
-            throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size}`);
+            throw new Error(`Insufficient quantity available for product ${item.product_id} in size ${item.size_quantity_id}`);
           }
         
           // Update the size_quantity record
