@@ -34,16 +34,16 @@ export async function GET(req: Request, { params }: getSubCategoryParams) {
         id: +id,
       },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         sub_category: {
           select: {
             id: true,
             name: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
@@ -167,7 +167,6 @@ export async function PUT(req: Request, { params }: getSubCategoryParams) {
       data: {
         name: name.trim(),
         description: description,
-        category_id: categoryId,
         sub_category_id: subCategoryId,
         updated_at: new Date(),
       },
@@ -219,7 +218,6 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
 
     const isUseInProduct = await prisma.products.findMany({
       where: {
-        sub_category_id: +id,
         is_deleted: false,
       },
     });

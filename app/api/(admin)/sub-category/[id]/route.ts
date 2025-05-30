@@ -192,7 +192,7 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
 
     const isUseInProduct = await prisma.products.findMany({
       where: {
-        sub_category_id: +id,
+        // sub_category_id: +id,
         is_deleted: false,
       },
     });

@@ -32,32 +32,11 @@ export async function POST(request: NextRequest) {
 
     const validation = await validateRequest(createProductSchema, {
       type: "formdata",
-      numberFields: [
-        "price",
-        "discount",
-        "category_id",
-        "sub_category_id",
-        "sub_category_type_id",
-        "brand_id",
-      ],
+      numberFields: ["price", "discount", "sub_category_type_id", "brand_id"],
       fileFields: ["images"],
     })({ ...fields, ...files });
     if ("status" in validation) {
       return validation;
-    }
-
-    // Validate category_id
-    if (!(await categoryService.exists(fields.category_id?.[0]))) {
-      return NextResponse.json(errorResponse("Invalid category_id", HttpStatus.BAD_REQUEST), {
-        status: HttpStatus.BAD_REQUEST,
-      });
-    }
-
-    // Validate sub_category_id
-    if (!(await subCategoryService.exists(fields.sub_category_id?.[0]))) {
-      return NextResponse.json(errorResponse("Invalid sub_category_id", HttpStatus.BAD_REQUEST), {
-        status: HttpStatus.BAD_REQUEST,
-      });
     }
 
     // Validate sub_category_type_id
@@ -79,8 +58,6 @@ export async function POST(request: NextRequest) {
       description: fields.description?.[0] || "",
       price: parseFloat(fields.price?.[0] || "0"),
       discount: parseInt(fields.discount?.[0] || "0"),
-      category_id: parseInt(fields.category_id?.[0] || "0"),
-      sub_category_id: parseInt(fields.sub_category_id?.[0] || "0"),
       sub_category_type_id: parseInt(fields.sub_category_type_id?.[0] || "0"),
       brand_id: parseInt(fields.brand_id?.[0] || "0"),
       size_quantity_id: parseInt(fields.size_quantity_id?.[0] || "0"),

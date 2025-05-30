@@ -1,21 +1,23 @@
 import { PrismaClient } from "@prisma/client";
-import { CreateWishlistInput, WishlistQueryInput } from "../utils/validationSchema/wishlist.validation";
+import {
+  CreateWishlistInput,
+  WishlistQueryInput,
+} from "../utils/validationSchema/wishlist.validation";
 
 const prisma = new PrismaClient();
 
 export const wishlistService = {
   async addToWishlist(userId: number, data: CreateWishlistInput) {
-
     const [product] = await Promise.all([
       prisma.products.findFirst({
         where: {
           id: data.product_id,
-          is_deleted: false
-        }
-      })
+          is_deleted: false,
+        },
+      }),
     ]);
     if (!product) {
-      throw new Error('Product not found with the given ID');
+      throw new Error("Product not found with the given ID");
     }
 
     // Check if the product is already in the wishlist
@@ -49,7 +51,15 @@ export const wishlistService = {
             image: true,
             price: true,
             discount: true,
-            category: true,
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
             brand: true,
           },
         },
@@ -58,12 +68,7 @@ export const wishlistService = {
   },
 
   async getWishlist(userId: number, params: WishlistQueryInput) {
-    const {
-      page = 1,
-      pageSize = 10,
-      sortBy = 'created_at',
-      order = 'desc'
-    } = params;
+    const { page = 1, pageSize = 10, sortBy = "created_at", order = "desc" } = params;
 
     let orderBy: any;
     switch (sortBy) {
@@ -106,9 +111,15 @@ export const wishlistService = {
               image: true,
               price: true,
               discount: true,
-              category: true,
-              sub_category: true,
-              sub_category_type: true,
+              sub_category_type: {
+                include: {
+                  sub_category: {
+                    include: {
+                      category: true,
+                    },
+                  },
+                },
+              },
               brand: true,
             },
           },
@@ -151,20 +162,20 @@ export const wishlistService = {
       prisma.products.findFirst({
         where: {
           id: data.product_id,
-          is_deleted: false
-        }
-      })
+          is_deleted: false,
+        },
+      }),
     ]);
     if (!product) {
-      throw new Error('Product not found with the given ID');
+      throw new Error("Product not found with the given ID");
     }
-    
+
     const existingItem = await prisma.wishlist.findUnique({
       where: {
         user_id_product_id: {
           user_id: userId,
-          product_id: data.product_id
-        }
+          product_id: data.product_id,
+        },
       },
       include: {
         products: {
@@ -175,7 +186,15 @@ export const wishlistService = {
             image: true,
             price: true,
             discount: true,
-            category: true,
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
             brand: true,
           },
         },
@@ -183,12 +202,12 @@ export const wishlistService = {
     });
 
     if (existingItem) {
-      if(data.isSoftAdd) {
+      if (data.isSoftAdd) {
         // Soft add to wishlist
         return {
           data: existingItem,
           message: "Added to wishlist",
-          isWishlisted: existingItem.is_deleted
+          isWishlisted: existingItem.is_deleted,
         };
       }
 
@@ -197,11 +216,11 @@ export const wishlistService = {
         where: {
           user_id_product_id: {
             user_id: userId,
-            product_id: data.product_id
-          }
+            product_id: data.product_id,
+          },
         },
         data: {
-          is_deleted: !existingItem.is_deleted
+          is_deleted: !existingItem.is_deleted,
         },
         include: {
           products: {
@@ -212,17 +231,25 @@ export const wishlistService = {
               image: true,
               price: true,
               discount: true,
-              category: true,
+              sub_category_type: {
+                include: {
+                  sub_category: {
+                    include: {
+                      category: true,
+                    },
+                  },
+                },
+              },
               brand: true,
             },
           },
         },
       });
-      
+
       return {
         data: updatedWishlist,
         message: updatedWishlist.is_deleted ? "Removed from wishlist" : "Added to wishlist",
-        isWishlisted: !updatedWishlist.is_deleted
+        isWishlisted: !updatedWishlist.is_deleted,
       };
     }
 
@@ -242,7 +269,15 @@ export const wishlistService = {
             image: true,
             price: true,
             discount: true,
-            category: true,
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
             brand: true,
           },
         },
@@ -252,22 +287,15 @@ export const wishlistService = {
     return {
       data: newWishlist,
       message: "Added to wishlist",
-      isWishlisted: true
+      isWishlisted: true,
     };
   },
 
-
   async getAllWishlistItems(params: WishlistQueryInput) {
-    const {
-      page = 1,
-      pageSize = 10,
-      search = "",
-      sortBy = "created_at",
-      order = "desc"
-    } = params;
+    const { page = 1, pageSize = 10, search = "", sortBy = "created_at", order = "desc" } = params;
 
     const groupedItems = await prisma.wishlist.groupBy({
-      by: ['product_id'],
+      by: ["product_id"],
       where: {
         is_deleted: false,
         ...(search && {
@@ -276,19 +304,27 @@ export const wishlistService = {
               products: {
                 OR: [
                   { name: { contains: search, mode: "insensitive" as const } },
-                  { category: { name: { contains: search, mode: "insensitive" as const } } },
-                  { sub_category: { name: { contains: search, mode: "insensitive" as const } } },
-                  { sub_category_type: { name: { contains: search, mode: "insensitive" as const } } },
-                  { brand: { name: { contains: search, mode: "insensitive" as const } } }
-                ]
-              }
-            }
-          ]
-        })
+                  {
+                    sub_category_type: {
+                      name: { contains: search, mode: "insensitive" as const },
+                      sub_category: {
+                        name: { contains: search, mode: "insensitive" as const },
+                        category: {
+                          name: { contains: search, mode: "insensitive" as const },
+                        },
+                      },
+                    },
+                  },
+                  { brand: { name: { contains: search, mode: "insensitive" as const } } },
+                ],
+              },
+            },
+          ],
+        }),
       },
       _count: {
-        user_id: true
-      }
+        user_id: true,
+      },
     });
 
     // Get total count for pagination
@@ -302,17 +338,23 @@ export const wishlistService = {
     const detailedProducts = await prisma.products.findMany({
       where: {
         id: {
-          in: paginatedProductIds
-        }
+          in: paginatedProductIds,
+        },
       },
       include: {
-        category: true,
-        sub_category: true,
-        sub_category_type: true,
+        sub_category_type: {
+          include: {
+            sub_category: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
         brand: true,
         wishlist: {
           where: {
-            is_deleted: false
+            is_deleted: false,
           },
           include: {
             users: {
@@ -324,14 +366,14 @@ export const wishlistService = {
                 role: {
                   select: {
                     id: true,
-                    name: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     // Format the response
@@ -350,13 +392,19 @@ export const wishlistService = {
           discount: product.discount,
           image: product.image,
           // quantity: product.quantity,
-          category: product.category,
-          sub_category: product.sub_category,
-          sub_category_type: product.sub_category_type,
-          brand: product.brand
+          sub_category_type: {
+            name: product.sub_category_type.name,
+            sub_category: {
+              name: product.sub_category_type.sub_category.name,
+              category: {
+                name: product.sub_category_type.sub_category.category.name,
+              },
+            },
+          },
+          brand: product.brand,
         },
         unique_users_count: uniqueUsers,
-        users: users
+        users: users,
       };
     });
 
@@ -364,7 +412,7 @@ export const wishlistService = {
     const sortedData = formattedData.sort((a, b) => {
       switch (sortBy) {
         case "name":
-          return order === "desc" 
+          return order === "desc"
             ? b.product.name.localeCompare(a.product.name)
             : a.product.name.localeCompare(b.product.name);
         case "users":
@@ -381,5 +429,5 @@ export const wishlistService = {
     });
 
     return { data: sortedData, total };
-  }
+  },
 };

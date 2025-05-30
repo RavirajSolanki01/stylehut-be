@@ -40,9 +40,15 @@ export const productService = {
           variant_id: data.variant_id,
         },
         include: {
-          category: true, // this will populate the category_id data
-          sub_category: true, // this will populate the sub_category_id data
-          sub_category_type: true, // this will populate the sub_category_type_id data
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          }, // this will populate the sub_category_type_id data
           brand: true, // this will populate the brand_id data
           size_quantities: {
             include: {
@@ -167,9 +173,15 @@ export const productService = {
             where: { is_deleted: false },
             select: { ratings: true },
           },
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
           brand: true,
         },
       });
@@ -295,9 +307,15 @@ export const productService = {
         is_deleted: false,
       },
       include: {
-        category: true,
-        sub_category: true,
-        sub_category_type: true,
+        sub_category_type: {
+          include: {
+            sub_category: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
         brand: true,
         ratings: {
           where: { is_deleted: false },
@@ -372,9 +390,15 @@ export const productService = {
             },
           },
           brand: true,
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
         },
       });
     }
@@ -433,9 +457,15 @@ export const productService = {
           },
         },
         include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
           brand: true,
           size_quantities: {
             include: {
@@ -500,9 +530,15 @@ export const productService = {
           updated_at: new Date(),
         },
         include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
           brand: true,
         },
       });

@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 export async function POST(req: Request) {
   try {
     const body: addSubCategoryTypePayload = await req.json();
-    const { name, description, categoryId, subCategoryId } = body;
+    const { name, description, subCategoryId } = body;
 
     const validation = addEditSubCategoryTypeValidation(body);
 
@@ -26,21 +26,6 @@ export async function POST(req: Request) {
       return NextResponse.json(errorResponse(validation.message, HttpStatus.BAD_REQUEST), {
         status: HttpStatus.BAD_REQUEST,
       });
-    }
-
-    const categoryExist = await prisma.category.findFirst({
-      where: {
-        id: categoryId,
-      },
-    });
-
-    if (!categoryExist || categoryExist.is_deleted) {
-      return NextResponse.json(
-        errorResponse(CATEGORY_CONSTANTS.NOT_EXISTS_OR_DELETED, HttpStatus.BAD_REQUEST),
-        {
-          status: HttpStatus.BAD_REQUEST,
-        }
-      );
     }
 
     const subCategoryExist = await prisma.sub_category.findFirst({
@@ -58,18 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (categoryId && subCategoryExist.category_id !== +categoryId) {
-      return NextResponse.json(
-        errorResponse(
-          SUB_CATEGORY_TYPE_CONSTANTS.SUB_CATEGORY_NOT_ASSOCIATED_WITH_CATEGORY,
-          HttpStatus.BAD_REQUEST
-        ),
-        { status: HttpStatus.BAD_REQUEST }
-      );
-    }
-
     const nameExist = await checkNameConflict(name, "sub_category_type", {
-      category_id: categoryId,
       sub_category_id: subCategoryId,
     });
     if (nameExist.hasSameName && nameExist.message) {
@@ -82,7 +56,6 @@ export async function POST(req: Request) {
       data: {
         name: name.trim(),
         description: description,
-        category_id: categoryId,
         sub_category_id: subCategoryId,
         create_at: new Date(),
         updated_at: new Date(),
@@ -125,9 +98,9 @@ export async function GET(req: Request) {
     let orderBy;
 
     switch (sortBy) {
-      case "category":
-        orderBy = { category: { name: order } };
-        break;
+      // case "category":
+      //   orderBy = { category: { name: order } };
+      //   break;
       case "sub_category":
         orderBy = { sub_category: { name: order } };
         break;
@@ -154,45 +127,21 @@ export async function GET(req: Request) {
           },
         },
         {
-          category: {
-            name: {
-              contains: search,
-              mode: "insensitive" as const,
-            },
-          },
-        },
-        {
           sub_category: {
             name: {
               contains: search,
               mode: "insensitive" as const,
             },
+            category: {
+              name: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
           },
         },
       ],
     };
-
-    if (categoryId) {
-      const categoryIdValidation = idValidation(+categoryId, CATEGORY_CONSTANTS.ID_VALIDATION);
-      if (!categoryIdValidation.valid && categoryIdValidation.message) {
-        return NextResponse.json(
-          errorResponse(categoryIdValidation.message, HttpStatus.BAD_REQUEST),
-          { status: HttpStatus.BAD_REQUEST }
-        );
-      }
-      const category = await prisma.category.findFirst({
-        where: {
-          id: +categoryId,
-        },
-      });
-      if (!category || category.is_deleted) {
-        return NextResponse.json(
-          errorResponse(CATEGORY_CONSTANTS.NOT_EXISTS_OR_DELETED, HttpStatus.NOT_FOUND),
-          { status: HttpStatus.NOT_FOUND }
-        );
-      }
-      where.category_id = +categoryId;
-    }
 
     if (subCategoryId) {
       const subCategoryIdValidation = idValidation(
@@ -234,16 +183,18 @@ export async function GET(req: Request) {
       prisma.sub_category_type.findMany({
         where,
         include: {
-          category: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
           sub_category: {
             select: {
               id: true,
               name: true,
+            },
+            include: {
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
