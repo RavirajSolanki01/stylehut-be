@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productService } from "@/app/services/product.service";
 import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
-import { categoryService } from "@/app/services/category.service";
-import { subCategoryService } from "@/app/services/subCategory.service";
 import { subCategoryTypeService } from "@/app/services/subCategoryType.service";
 import { brandService } from "@/app/services/brand.service";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";

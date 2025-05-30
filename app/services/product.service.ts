@@ -81,16 +81,16 @@ export const productService = {
       maxDiscount,
     } = params;
 
-    let orderBy: ProductOrderBy;
+    let orderBy;
     switch (sortBy) {
       case "category":
-        orderBy = { category: { name: order } };
+        orderBy = { sub_category_type: { sub_category: { category: { name: order } } } };
         break;
       case "brand":
         orderBy = { brand: { name: order } };
         break;
       case "sub_category":
-        orderBy = { sub_category: { name: order } };
+        orderBy = { sub_category_type: { sub_category: { name: order } } };
         break;
       case "sub_category_type":
         orderBy = { sub_category_type: { name: order } };
@@ -106,18 +106,14 @@ export const productService = {
           { name: { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           {
-            category: {
-              name: { contains: search, mode: "insensitive" as const },
-            },
-          },
-          {
-            sub_category: {
-              name: { contains: search, mode: "insensitive" as const },
-            },
-          },
-          {
             sub_category_type: {
               name: { contains: search, mode: "insensitive" as const },
+              sub_category: {
+                name: { contains: search, mode: "insensitive" as const },
+                category: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
             },
           },
           {
@@ -212,9 +208,15 @@ export const productService = {
     }
 
     let include: ProductInclude = {
-      category: true,
-      sub_category: true,
-      sub_category_type: true,
+      sub_category_type: {
+        include: {
+          sub_category: {
+            include: {
+              category: true,
+            },
+          },
+        },
+      },
       brand: true,
       ratings: {
         where: { is_deleted: false },
@@ -259,40 +261,41 @@ export const productService = {
     ]);
 
     const formattedData = data.map((product: ProductWithRelations): FormattedProduct => {
-      const ratings = product.ratings || [];
+      // Safely get ratings array
+      const productRatings = Array.isArray(product.ratings) ? product.ratings : [];
 
       // Calculate average rating
       const averageRating =
-        ratings.length > 0
-          ? ratings.reduce((acc, curr) => acc + Number(curr.ratings), 0) / ratings.length
+        productRatings.length > 0
+          ? productRatings.reduce((acc: number, curr) => {
+              const ratingValue = curr?.ratings ? Number(curr.ratings) : 0;
+              return acc + (isNaN(ratingValue) ? 0 : ratingValue);
+            }, 0) / productRatings.length
           : 0;
 
       // Get rating distribution
-      const ratingDistribution: RatingStats["distribution"] = {
-        1: 0,
-        2: 0,
-        3: 0,
-        4: 0,
-        5: 0,
-      };
+      const ratingDistribution: RatingStats["distribution"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-      product.ratings.forEach(rating => {
-        ratingDistribution[Number(rating.ratings) as keyof typeof ratingDistribution]++;
+      productRatings.forEach(rating => {
+        if (rating?.ratings) {
+          const ratingValue = Math.min(5, Math.max(1, Math.round(Number(rating.ratings))));
+          if (ratingValue >= 1 && ratingValue <= 5) {
+            ratingDistribution[ratingValue as keyof typeof ratingDistribution]++;
+          }
+        }
       });
 
-      let formattedProduct: FormattedProduct = {
+      // Create formatted product with proper typing
+      const formattedProduct: FormattedProduct = {
         ...product,
         ratingStats: {
-          averageRating,
-          totalRatings: product.ratings.length,
+          averageRating: isNaN(averageRating) ? 0 : parseFloat(averageRating.toFixed(2)),
+          totalRatings: productRatings.length,
           distribution: ratingDistribution,
         },
+        isInCart: userId ? (product.cart_items?.length || 0) > 0 : undefined,
+        isInWishlist: userId ? (product.wishlist?.length || 0) > 0 : undefined,
       };
-
-      if (userId) {
-        formattedProduct.isInCart = (product?.cart_items?.length || 0) > 0;
-        formattedProduct.isInWishlist = (product?.wishlist?.length || 0) > 0;
-      }
 
       return formattedProduct;
     });
