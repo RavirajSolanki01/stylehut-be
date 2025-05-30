@@ -46,6 +46,9 @@ export async function GET(req: Request) {
       include: {
         category: true,
       },
+      orderBy: {
+        name: "asc",
+      },
     });
 
     return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategories), {

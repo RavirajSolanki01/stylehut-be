@@ -50,6 +50,13 @@ export async function GET(req: Request) {
 
     const subCategoryTypes = await prisma.sub_category_type.findMany({
       where,
+      include: {
+        sub_category: {
+          include: {
+            category: true,
+          },
+        },
+      },
       orderBy: {
         name: "asc",
       },
