@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
 import {
-  CATEGORY_CONSTANTS,
   SUB_CATEGORY_CONSTANTS,
   SUB_CATEGORY_TYPE_CONSTANTS,
   COMMON_CONSTANTS,
@@ -52,6 +51,18 @@ export async function POST(req: Request) {
       });
     }
 
+    // First get the sub-category to get its category_id
+    const subCategory = await prisma.sub_category.findUnique({
+      where: { id: subCategoryId, is_deleted: false },
+    });
+
+    if (!subCategory) {
+      return NextResponse.json(
+        errorResponse(SUB_CATEGORY_CONSTANTS.NOT_EXISTS_OR_DELETED, HttpStatus.BAD_REQUEST),
+        { status: HttpStatus.BAD_REQUEST }
+      );
+    }
+
     const subCategoryType = await prisma.sub_category_type.create({
       data: {
         name: name.trim(),
@@ -88,7 +99,7 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
     const search = searchParams.get("search") || "";
-    const sortBy = searchParams.get("sortBy") || "create_at";
+    const sortBy = searchParams.get("sortBy") || "name";
     const order = (searchParams.get("order") as "asc" | "desc") || "desc";
     const categoryId = searchParams.get("categoryId");
     const subCategoryId = searchParams.get("subCategoryId");
@@ -98,9 +109,9 @@ export async function GET(req: Request) {
     let orderBy;
 
     switch (sortBy) {
-      // case "category":
-      //   orderBy = { category: { name: order } };
-      //   break;
+      case "category":
+        orderBy = { sub_category: { category: { name: order } } };
+        break;
       case "sub_category":
         orderBy = { sub_category: { name: order } };
         break;
@@ -182,13 +193,16 @@ export async function GET(req: Request) {
     const [data, total] = await Promise.all([
       prisma.sub_category_type.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          create_at: true,
+          updated_at: true,
           sub_category: {
             select: {
               id: true,
               name: true,
-            },
-            include: {
               category: {
                 select: {
                   id: true,

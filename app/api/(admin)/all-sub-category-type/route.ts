@@ -50,6 +50,9 @@ export async function GET(req: Request) {
 
     const subCategoryTypes = await prisma.sub_category_type.findMany({
       where,
+      orderBy: {
+        name: "asc",
+      },
     });
 
     return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategoryTypes), {

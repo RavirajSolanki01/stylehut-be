@@ -33,7 +33,13 @@ export async function GET(req: Request, { params }: getSubCategoryParams) {
       where: {
         id: +id,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        create_at: true,
+        updated_at: true,
+        is_deleted: true,
         sub_category: {
           select: {
             id: true,
@@ -76,7 +82,7 @@ export async function GET(req: Request, { params }: getSubCategoryParams) {
 export async function PUT(req: Request, { params }: getSubCategoryParams) {
   try {
     const body: addSubCategoryTypePayload = await req.json();
-    const { name, description, categoryId, subCategoryId } = body;
+    const { name, description, subCategoryId } = body;
 
     const { id } = await params;
 
@@ -109,21 +115,6 @@ export async function PUT(req: Request, { params }: getSubCategoryParams) {
       );
     }
 
-    const categoryExist = await prisma.category.findFirst({
-      where: {
-        id: categoryId,
-      },
-    });
-
-    if (!categoryExist || categoryExist.is_deleted) {
-      return NextResponse.json(
-        errorResponse(CATEGORY_CONSTANTS.NOT_EXISTS_OR_DELETED, HttpStatus.BAD_REQUEST),
-        {
-          status: HttpStatus.BAD_REQUEST,
-        }
-      );
-    }
-
     const subCategoryExist = await prisma.sub_category.findFirst({
       where: {
         id: subCategoryId,
@@ -139,7 +130,7 @@ export async function PUT(req: Request, { params }: getSubCategoryParams) {
       );
     }
 
-    if (categoryId && subCategoryExist.category_id !== +categoryId) {
+    if (subCategoryExist.category_id !== +subCategoryId) {
       return NextResponse.json(
         errorResponse(
           SUB_CATEGORY_TYPE_CONSTANTS.SUB_CATEGORY_NOT_ASSOCIATED_WITH_CATEGORY,
@@ -150,7 +141,6 @@ export async function PUT(req: Request, { params }: getSubCategoryParams) {
     }
 
     const nameExist = await checkNameConflict(name, "sub_category_type", {
-      category_id: categoryId,
       sub_category_id: subCategoryId,
       excludeId: subCategoryTypeExist.id,
     });
