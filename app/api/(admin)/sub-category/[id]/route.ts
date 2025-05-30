@@ -183,21 +183,33 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
       );
     }
 
-    const isUseInSubType = await prisma.sub_category_type.findMany({
-      where: {
-        sub_category_id: +id,
-        is_deleted: false,
-      },
-    });
+    const [subCategoryType, products] = await Promise.all([
+      prisma.sub_category_type.findFirst({
+        where: {
+          sub_category: {
+            id: +id,
+            is_deleted: false,
+          },
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+      prisma.products.findFirst({
+        where: {
+          sub_category_type: {
+            sub_category: {
+              id: +id,
+              is_deleted: false,
+            },
+            is_deleted: false,
+          },
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    const isUseInProduct = await prisma.products.findMany({
-      where: {
-        // sub_category_id: +id,
-        is_deleted: false,
-      },
-    });
-
-    if (isUseInSubType.length > 0 || isUseInProduct.length > 0) {
+    if (subCategoryType || products) {
       return NextResponse.json(
         errorResponse(SUB_CATEGORY_CONSTANTS.IN_USED, HttpStatus.BAD_REQUEST),
         { status: HttpStatus.BAD_REQUEST }

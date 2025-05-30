@@ -76,10 +76,20 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
         status: HttpStatus.NOT_FOUND,
       });
     }
-    const [subCategories, products] = await Promise.all([
+    const [subCategories, subCategoryType, products] = await Promise.all([
       prisma.sub_category.findFirst({
         where: {
           category_id: id,
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+      prisma.sub_category_type.findFirst({
+        where: {
+          sub_category: {
+            category_id: id,
+            is_deleted: false,
+          },
           is_deleted: false,
         },
         select: { id: true },
@@ -99,7 +109,7 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
       }),
     ]);
 
-    if (subCategories || products) {
+    if (subCategories || subCategoryType || products) {
       return NextResponse.json(errorResponse(CATEGORY_CONSTANTS.IN_USED, HttpStatus.BAD_REQUEST), {
         status: HttpStatus.BAD_REQUEST,
       });

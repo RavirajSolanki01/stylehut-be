@@ -28,6 +28,9 @@ export async function GET(req: Request) {
         where: {
           id: +categoryId,
         },
+        orderBy: {
+          name: "asc",
+        },
       });
       if (!category || category.is_deleted) {
         return NextResponse.json(
