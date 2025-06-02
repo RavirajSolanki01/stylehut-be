@@ -22,7 +22,8 @@ export async function PUT(request: NextRequest, { params }: Props) {
       return validation;
     }
 
-    const orderId = await Number(params.id);
+    const { id } = await params;
+    const orderId = Number(id);
     const order = await orderService.updateOrderStatus(
       Number(orderId),
       validation.validatedData
