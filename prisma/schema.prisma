@@ -277,12 +277,13 @@ model cart {
   updated_at      DateTime  @updatedAt
   is_deleted      Boolean   @default(false)
   status          CartStatus @default(ACTIVE)
+  converted_at    DateTime?
 
   // Relations
   user            users     @relation(fields: [user_id], references: [id])
   items           cart_items[]
 
-  @@unique([user_id, status, is_deleted])
+  @@unique([user_id, status, is_deleted, converted_at])
   @@index([user_id, status])
 }
 
@@ -461,6 +462,8 @@ model return_request {
   qc_status       Boolean?
   refund_id       String?       
   pickup_date     DateTime?
+  pickup_slot     String?
+  received_condition String?
   refund_amount   Decimal?
   refunded_at     DateTime?
   rejection_reason  String?       @db.VarChar(1024)
@@ -469,6 +472,8 @@ model return_request {
 
   // Relations
   order           orders          @relation(fields: [order_id], references: [id])
+  pickup            return_pickup?
+  pickup_history    return_pickup_history[]
 
   @@index([order_id])
 }
@@ -496,4 +501,57 @@ model shop_by_category {
   sub_category    sub_category @relation(fields: [sub_category_id], references: [id])
 
   @@index([user_id])
+}
+
+enum PickupSlot {
+  MORNING_9_12
+  AFTERNOON_12_3
+  EVENING_3_6
+}
+
+enum PickupStatus {
+  PENDING
+  SCHEDULED
+  RESCHEDULED
+  CANCELLED
+  ATTEMPTED
+  COMPLETED
+  FAILED
+}
+
+model return_pickup {
+  id                Int           @id @default(autoincrement())
+  return_request_id Int          @unique
+  scheduled_date    DateTime
+  slot             PickupSlot
+  status           PickupStatus  @default(PENDING)
+  pickup_agent     String?       @db.VarChar(100)
+  agent_phone      String?       @db.VarChar(15)
+  attempt_count    Int           @default(0)
+  last_attempt     DateTime?
+  pickup_notes     String?       @db.VarChar(1024)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+  // Relations
+  return_request    return_request @relation(fields: [return_request_id], references: [id])
+
+  @@index([return_request_id])
+  @@index([status])
+  @@index([scheduled_date])
+}
+
+model return_pickup_history {
+  id                Int           @id @default(autoincrement())
+  return_request_id Int
+  scheduled_date    DateTime
+  slot             PickupSlot
+  status           PickupStatus
+  attempt_notes     String?       @db.VarChar(1024)
+  created_at       DateTime      @default(now())
+
+  // Relations
+  return_request    return_request @relation(fields: [return_request_id], references: [id])
+
+  @@index([return_request_id])
 }
