@@ -1,9 +1,10 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { OrderStatus } from '@/app/types/order.types';
-import { CreateOrderInput, UpdateOrderAdminInput, CreateReturnRequestInput, OrderQueryInput } from '../utils/validationSchema/order.validation';
+import { OrderStatus, ReturnRequestStatus } from '@/app/types/order.types';
+import { CreateOrderInput, UpdateOrderAdminInput, CreateReturnRequestInput, OrderQueryInput, ApproveReturnInput, ProcessReturnInput, ProcessReturnQCInput } from '../utils/validationSchema/order.validation';
 import { Decimal } from '@prisma/client/runtime/library';
 import { File } from 'formidable';
 import { uploadToCloudinary } from "@/app/utils/cloudinary";
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -104,8 +105,9 @@ export const orderService = {
       await tx.cart.updateMany({
         where: { user_id: userId, status: 'ACTIVE', is_deleted: false },
         data: { 
-          status: 'CONVERTED_TO_ORDER',
+          status: `CONVERTED_TO_ORDER`,
           is_deleted: true,
+          converted_at: new Date(),
           updated_at: new Date()
         }
       });
@@ -548,4 +550,159 @@ export const orderService = {
       return updatedOrder;
     });
   },
+
+  async approveReturn(orderId: number, data: ApproveReturnInput) {
+    return await prisma.$transaction(async (tx) => {
+      await tx.return_request.update({
+        where: { order_id: orderId },
+        data: {
+          pickup_date: data.pickup_date,
+        }
+      });
+  
+      await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.RETURN_APPROVED,
+          timeline: {
+            create: {
+              status: OrderStatus.RETURN_APPROVED,
+              comment: 'Return request approved'
+            }
+          }
+        }
+      });
+    });
+  },
+
+  async rejectReturn(orderId: number, reason: string) {
+    return await prisma.$transaction(async (tx) => {
+      await tx.return_request.update({
+        where: { order_id: orderId },
+        data: {
+          rejection_reason: reason
+        }
+      });
+  
+      await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.RETURN_REJECTED,
+          timeline: {
+            create: {
+              status: OrderStatus.RETURN_REJECTED,
+              comment: `Return rejected: ${reason}`
+            }
+          }
+        }
+      });
+    });
+  },
+  
+  async processReturnRefund(orderId: number, data: ProcessReturnInput) {
+    return await prisma.$transaction(async (tx) => {
+      await tx.return_request.update({
+        where: { order_id: orderId },
+        data: {
+          received_condition: data.condition,
+          qc_notes: data.notes,
+          refund_id: data.refund_id,
+          status: 'INITIATED'
+        }
+      });
+  
+      await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.REFUND_INITIATED,
+          timeline: {
+            create: {
+              status: OrderStatus.REFUND_INITIATED,
+              comment: `Refund initiated: ${data.refund_id}`
+            }
+          }
+        }
+      });
+    });
+  },
+
+  async processQualityCheck(returnRequestId: number, data: ProcessReturnQCInput) {
+    const refundID = uuidv4();
+
+    return await prisma.$transaction(async (tx) => {
+      const returnRequest = await tx.return_request.update({
+        where: { id: returnRequestId },
+        data: {
+          qc_status: data.status,
+          qc_notes: data.notes,
+          status: data.status ? ReturnRequestStatus.QC_PASSED : ReturnRequestStatus.QC_FAILED
+        },
+        include: { order: true }
+      });
+
+      if (data.status) {
+        // If QC passed, initiate refund
+        const refundData = {
+          amount: Number(returnRequest.refund_amount),
+          paymentMethod: returnRequest.order.payment_method,
+          orderReference: returnRequest.order.order_number
+        };
+
+        // const refundResponse = await paymentService.initiateRefund(refundData);
+
+        // Update return request with refund details
+        await tx.return_request.update({
+          where: { id: returnRequestId },
+          data: {
+            status: ReturnRequestStatus.REFUND_INITIATED,
+            refund_id: refundID, // Replace with actual refund ID from payment gateway
+            // refund_id: refundResponse.refundId
+          }
+        });
+
+        // Update order status
+        await tx.orders.update({
+          where: { id: returnRequest.order_id },
+          data: {
+            order_status: OrderStatus.REFUND_INITIATED,
+            timeline: {
+              create: {
+                status: OrderStatus.REFUND_INITIATED,
+                comment: `Refund initiated with ID: ${refundID}`
+              }
+            }
+          }
+        });
+      }
+
+      return returnRequest;
+    });
+  },
+
+  async updateRefundStatus(returnRequestId: number, refundId: string, status: string) {
+    return await prisma.$transaction(async (tx) => {
+      const returnRequest = await tx.return_request.update({
+        where: { id: returnRequestId },
+        data: {
+          status: ReturnRequestStatus.REFUND_COMPLETED,
+          refunded_at: new Date()
+        }
+      });
+
+      await tx.orders.update({
+        where: { id: returnRequest.order_id },
+        data: {
+          order_status: OrderStatus.REFUND_COMPLETED,
+          timeline: {
+            create: {
+              status: OrderStatus.REFUND_COMPLETED,
+              comment: `Refund completed for return request`
+            }
+          }
+        }
+      });
+
+      return returnRequest;
+    });
+  }
 };
