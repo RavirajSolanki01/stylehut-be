@@ -81,7 +81,7 @@ model address {
   billing_orders      orders[]      @relation("BillingAddress")
 
   @@index([user_id])
-  @@index([address_type]) 
+  @@index([address_type])
 }
 
 model category {
@@ -203,7 +203,7 @@ model size_quantity {
   id                Int @id @default(autoincrement())
   quantity          Int
   price             Decimal? @default(0)
-  discount          Decimal? @default(0)  
+  discount          Decimal? @default(0)
   product_id        Int?
   custom_product_id String?
   variant_id        Int?
@@ -220,14 +220,28 @@ model size_quantity {
   order_items   order_items[]
 }
 model size_data {
-  id Int @id @default(autoincrement())
-  size String
-  name String
-  create_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  is_deleted Boolean @default(false)  
+  id             Int      @id @default(autoincrement())
+  size           String
+  name           String
+  has_size_chart Boolean? @default(false)
+  type           String?
+  custom_size_id String @unique
+  create_at      DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  is_deleted     Boolean  @default(false)
 
-  size_quantity size_quantity[]
+  size_quantity   size_quantity[]
+  size_chart_data size_chart_data[] @relation("SizeToChart")
+}
+
+model size_chart_data {
+  id               Int        @id @default(autoincrement())
+  custom_size_id   String
+  size_field_name  String
+  size_field_value String
+  // size_data        size_data? @relation("SizeToChart", fields: [size_data_id], references: [id])
+  size_data        size_data @relation("SizeToChart", fields: [custom_size_id], references: [custom_size_id])
+  size_data_id     Int?
 }
 
 model ratings {
@@ -475,7 +489,7 @@ model return_request {
 
 model admin_settings_category {
   id        Int     @id @default(1)
-  cardColor String  
+  cardColor String
   fontColor String
   updatedAt DateTime @updatedAt
 }
