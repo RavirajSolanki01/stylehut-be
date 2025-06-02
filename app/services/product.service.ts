@@ -142,8 +142,10 @@ export const productService = {
           },
         ],
       }),
-      ...(category_id > 0 && { category_id }),
-      ...(sub_category_id > 0 && { sub_category_id }),
+      ...(category_id > 0 && {
+        sub_category_type: { sub_category: { category: { id: category_id } } },
+      }),
+      ...(sub_category_id > 0 && { sub_category_type: { sub_category: { id: sub_category_id } } }),
       ...(sub_category_type_id > 0 && { sub_category_type_id }),
       ...(brand_id > 0 && { brand_id }),
       ...((minPrice > 0 || maxPrice > 0) && {

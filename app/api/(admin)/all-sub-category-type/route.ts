@@ -58,7 +58,11 @@ export async function GET(req: Request) {
         },
       },
       orderBy: {
-        name: "asc",
+        sub_category: {
+          category: {
+            name: "asc",
+          },
+        },
       },
     });
 

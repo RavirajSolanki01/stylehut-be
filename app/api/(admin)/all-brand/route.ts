@@ -8,23 +8,16 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    const where: Prisma.sub_categoryWhereInput = {
-      is_deleted: false,
-    };
-
-    const subCategories = await prisma.sub_category.findMany({
-      where,
-      include: {
-        category: true,
+    const subCategoryTypes = await prisma.brand.findMany({
+      where: {
+        is_deleted: false,
       },
       orderBy: {
-        category: {
-          name: "asc",
-        },
+        name: "asc",
       },
     });
 
-    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategories), {
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategoryTypes), {
       status: HttpStatus.OK,
     });
   } catch (error) {
