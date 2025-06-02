@@ -10,6 +10,7 @@ export const sizeService = {
       custom_size_id: string;
       type?: string;
       has_size_chart?: boolean;
+      is_cm?: boolean;
     },
     tx: Prisma.TransactionClient = prisma// default to normal Prisma client if no transaction passed
   ) {
@@ -37,6 +38,7 @@ export const sizeService = {
         custom_size_id: data.custom_size_id,
         has_size_chart: data.has_size_chart,
         type: data.type,
+        is_cm: data.is_cm,
       },
     });
   },
@@ -97,6 +99,7 @@ export const sizeService = {
       custom_size_id: string;
       type?: string;
       has_size_chart?: boolean;
+      is_cm?: boolean;
     }[];
     size_chart_data: {
       custom_size_id: string;

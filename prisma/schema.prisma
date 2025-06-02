@@ -224,6 +224,7 @@ model size_data {
   size           String
   name           String
   has_size_chart Boolean? @default(false)
+  is_cm          Boolean? @default(false)
   type           String?
   custom_size_id String @unique
   create_at      DateTime @default(now())
