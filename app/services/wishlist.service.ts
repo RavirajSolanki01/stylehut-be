@@ -110,6 +110,7 @@ export const wishlistService = {
               sub_category: true,
               sub_category_type: true,
               brand: true,
+              size_quantities: true,
             },
           },
         },
@@ -214,6 +215,7 @@ export const wishlistService = {
               discount: true,
               category: true,
               brand: true,
+              size_quantities: true,
             },
           },
         },
@@ -244,6 +246,7 @@ export const wishlistService = {
             discount: true,
             category: true,
             brand: true,
+            size_quantities: true
           },
         },
       },
@@ -309,6 +312,7 @@ export const wishlistService = {
         category: true,
         sub_category: true,
         sub_category_type: true,
+        size_quantities: true,
         brand: true,
         wishlist: {
           where: {
@@ -353,7 +357,8 @@ export const wishlistService = {
           category: product.category,
           sub_category: product.sub_category,
           sub_category_type: product.sub_category_type,
-          brand: product.brand
+          brand: product.brand,
+          size_quantities: product.size_quantities,
         },
         unique_users_count: uniqueUsers,
         users: users
