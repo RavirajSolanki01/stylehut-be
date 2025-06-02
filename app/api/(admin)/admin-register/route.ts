@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { generateOTP } from "@/app/utils/common";
 import { sendOTPEmail } from "@/app/services/mail.service";
-import { errorResponse } from "@/app/utils/apiResponse";
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
@@ -57,18 +56,36 @@ export async function POST(req: Request) {
       }
     } else {
       // Create a new user with only email & OTP
-      await prisma.users.create({
-        data: {
-          email,
-          otp,
-          role_id: 3,
-          otp_verified: false,
-          resend_otp_attempts: 0,
-          create_at: new Date(),
-          updated_at: new Date(),
-          is_deleted: false,
+      const admin_role = await prisma.role.findFirst({
+        where: {
+          name: {
+            equals: "admin",
+            mode: "insensitive",
+          },
         },
       });
+
+      if (admin_role) {
+        await prisma.users.create({
+          data: {
+            email,
+            otp,
+            role_id: admin_role.id,
+            otp_verified: false,
+            resend_otp_attempts: 0,
+            create_at: new Date(),
+            updated_at: new Date(),
+            is_deleted: false,
+          },
+        });
+      } else {
+        return NextResponse.json(
+          {
+            message: "Admin role not found. Account creation failed.",
+          },
+          { status: 404 }
+        );
+      }
     }
 
     // Send OTP via email
