@@ -16,7 +16,7 @@ export enum OrderStatus {
     REFUND_COMPLETED = "REFUND_COMPLETED"
 }
 
-export enum ReturnRequest {
+export enum ReturnRequestStatus {
 	PENDING = "PENDING",
 	APPROVED = "APPROVED",
 	REJECTED = "REJECTED",
@@ -52,9 +52,15 @@ export enum ReturnReason {
 	QUALITY_ISSUE,
 	OTHER,
 }
+  
+export enum PickupSlot {
+	MORNING_9_12 = "MORNING_9_12",
+	AFTERNOON_12_3 = "AFTERNOON_12_3",
+	EVENING_3_6 = "EVENING_3_6"
+}
 
 export type OrderStatusType = keyof typeof OrderStatus;
 export type PaymentStatusType = keyof typeof PaymentStatus;
 export type PaymentMethodType = keyof typeof PaymentMethod;
 export type ReturnReasonType = keyof typeof ReturnReason;
-export type ReturnRequestType = keyof typeof ReturnRequest;
+export type ReturnRequestType = keyof typeof ReturnRequestStatus;
