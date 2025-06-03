@@ -437,10 +437,13 @@ export const orderService = {
       [OrderStatus.SHIPPED]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED],
       [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [OrderStatus.RETURN_REQUESTED],
+      
       [OrderStatus.RETURN_REQUESTED]: [OrderStatus.RETURN_APPROVED, OrderStatus.RETURN_REJECTED],
       [OrderStatus.RETURN_APPROVED]: [OrderStatus.RETURN_PICKUP_SCHEDULED],
+
       [OrderStatus.RETURN_PICKUP_SCHEDULED]: [OrderStatus.RETURN_PICKED],
       [OrderStatus.RETURN_PICKED]: [OrderStatus.RETURN_RECEIVED],
+
       [OrderStatus.RETURN_RECEIVED]: [OrderStatus.REFUND_INITIATED],
       [OrderStatus.REFUND_INITIATED]: [OrderStatus.REFUND_COMPLETED],
       [OrderStatus.RETURN_REJECTED]: [],
@@ -599,33 +602,6 @@ export const orderService = {
     });
   },
   
-  async processReturnRefund(orderId: number, data: ProcessReturnInput) {
-    return await prisma.$transaction(async (tx) => {
-      await tx.return_request.update({
-        where: { order_id: orderId },
-        data: {
-          received_condition: data.condition,
-          qc_notes: data.notes,
-          refund_id: data.refund_id,
-          status: 'INITIATED'
-        }
-      });
-  
-      await tx.orders.update({
-        where: { id: orderId },
-        data: {
-          order_status: OrderStatus.REFUND_INITIATED,
-          timeline: {
-            create: {
-              status: OrderStatus.REFUND_INITIATED,
-              comment: `Refund initiated: ${data.refund_id}`
-            }
-          }
-        }
-      });
-    });
-  },
-
   async processQualityCheck(returnRequestId: number, data: ProcessReturnQCInput) {
     const refundID = uuidv4();
 
@@ -676,6 +652,33 @@ export const orderService = {
       }
 
       return returnRequest;
+    });
+  },
+
+  async processReturnRefund(orderId: number, data: ProcessReturnInput) {
+    return await prisma.$transaction(async (tx) => {
+      await tx.return_request.update({
+        where: { order_id: orderId },
+        data: {
+          received_condition: data.condition,
+          qc_notes: data.notes,
+          refund_id: data.refund_id,
+          status: 'INITIATED'
+        }
+      });
+  
+      await tx.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.REFUND_INITIATED,
+          timeline: {
+            create: {
+              status: OrderStatus.REFUND_INITIATED,
+              comment: `Refund initiated: ${data.refund_id}`
+            }
+          }
+        }
+      });
     });
   },
 
