@@ -110,6 +110,8 @@ model sub_category {
   sub_category_types   sub_category_type[]
   shop_by_category     shop_by_category[]
 
+  brands               brand[]  
+
   @@index([category_id])
 }
 
@@ -137,7 +139,8 @@ model brand {
   is_deleted   Boolean  @default(false)
 
   //Relations
-  products             products[]
+  products      products[]
+  sub_categories sub_category[]
 }
 
 model gender {
