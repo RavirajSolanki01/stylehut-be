@@ -131,11 +131,6 @@ export const productService = {
                   equals: isNaN(parseInt(search)) ? undefined : parseInt(search),
                 },
               },
-              {
-                quantity: {
-                  equals: isNaN(parseInt(search)) ? undefined : parseInt(search),
-                },
-              },
             ],
           },
         ],
