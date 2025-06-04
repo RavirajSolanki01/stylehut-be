@@ -25,10 +25,12 @@ export async function POST(req: Request) {
         existingUser.resend_otp_limit_expires_at &&
         new Date(existingUser.resend_otp_limit_expires_at) > now
       ) {
+        const msRemaining = existingUser.resend_otp_limit_expires_at.getTime() - now.getTime();
+        const minutesLeft = Math.floor(msRemaining / 60000);
+        const secondsLeft = Math.floor((msRemaining % 60000) / 1000);
         return NextResponse.json(
           {
-            message:
-              "Maximum resend attempts reached. Please wait 10 minutes before requesting a new OTP.",
+            message: `Maximum resend attempts reached. Please wait ${minutesLeft} minutes and ${secondsLeft} seconds before requesting a new OTP.`,
             data: {
               resend_opt_limit: existingUser.resend_otp_limit_expires_at,
             },
@@ -65,10 +67,12 @@ export async function POST(req: Request) {
           },
         });
 
+        const msRemaining = attemptLimit.getTime() - now.getTime();
+        const minutesLeft = Math.floor(msRemaining / 60000);
+        const secondsLeft = Math.floor((msRemaining % 60000) / 1000);
         return NextResponse.json(
           {
-            message:
-              "Maximum resend attempts reached. Please wait 10 minutes before requesting a new OTP.",
+            message: `Maximum resend attempts reached. Please wait ${minutesLeft} minutes and ${secondsLeft} seconds before requesting a new OTP.`,
             data: {
               resend_opt_limit: attemptLimit,
             },
