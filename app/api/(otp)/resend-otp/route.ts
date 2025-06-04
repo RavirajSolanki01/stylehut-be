@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         otp,
         updated_at: new Date(),
         otp_verified: false,
-        resend_otp_attempts: { increment: 1 },
+        resend_otp_attempts: user.resend_otp_attempts ? user.resend_otp_attempts + 1 : 1,
         resend_otp_limit_expires_at: null,
       },
     });
