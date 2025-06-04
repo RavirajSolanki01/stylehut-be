@@ -119,7 +119,7 @@ export const returnPickupService = {
         await tx.return_request.update({
           where: { id: pickup.return_request_id },
           data: {
-            status: ReturnRequestStatus.PICKED_UP
+            status: ReturnRequestStatus.PICKUP_COMPLETED
           }
         });
       }
