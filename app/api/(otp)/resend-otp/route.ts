@@ -35,7 +35,9 @@ export async function POST(req: Request) {
         const secondsLeft = Math.floor((msRemaining % 60000) / 1000);
         return NextResponse.json(
           {
-            message: `Maximum resend attempts reached. Please wait ${minutesLeft} minutes and ${secondsLeft} seconds before requesting a new OTP.`,
+            message: `Maximum resend attempts reached. Please wait ${minutesLeft} minutes ${
+              secondsLeft > 0 ? `and ${secondsLeft} seconds` : ""
+            } before requesting a new OTP.`,
             data: {
               resend_opt_limit: user.resend_otp_limit_expires_at,
             },
