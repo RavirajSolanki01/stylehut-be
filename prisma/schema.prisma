@@ -379,6 +379,7 @@ enum PaymentMethod {
   UPI
   NET_BANKING
   WALLET
+  ONLINE
   CASH_ON_DELIVERY
 }
 
