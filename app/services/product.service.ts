@@ -131,11 +131,6 @@ export const productService = {
                   equals: isNaN(parseInt(search)) ? undefined : parseInt(search),
                 },
               },
-              {
-                quantity: {
-                  equals: isNaN(parseInt(search)) ? undefined : parseInt(search),
-                },
-              },
             ],
           },
         ],
@@ -317,7 +312,11 @@ export const productService = {
         },
         size_quantities: {
           include: {
-            size_data: true,
+            size_data: {
+              include: {
+                size_chart_data: true,
+              },
+            },
           },
         },
       },
@@ -331,7 +330,11 @@ export const productService = {
         is_deleted: false,
       },
       include: {
-        size_data: true,
+        size_data: {
+          include: {
+            size_chart_data: true,
+          },
+        },
       },
     });
 

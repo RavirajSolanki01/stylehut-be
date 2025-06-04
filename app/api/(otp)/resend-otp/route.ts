@@ -29,6 +29,22 @@ export async function POST(req: Request) {
           updated_at: new Date(),
         },
       });
+      if (user.resend_otp_limit_expires_at) {
+        const msRemaining = user.resend_otp_limit_expires_at.getTime() - Date.now();
+        const minutesLeft = Math.floor(msRemaining / 60000);
+        const secondsLeft = Math.floor((msRemaining % 60000) / 1000);
+        return NextResponse.json(
+          {
+            message: `Maximum resend attempts reached. Please wait ${minutesLeft} minutes ${
+              secondsLeft > 0 ? `and ${secondsLeft} seconds` : ""
+            } before requesting a new OTP.`,
+            data: {
+              resend_opt_limit: user.resend_otp_limit_expires_at,
+            },
+          },
+          { status: 404 }
+        );
+      }
       return NextResponse.json(
         {
           message:
@@ -47,7 +63,7 @@ export async function POST(req: Request) {
         otp,
         updated_at: new Date(),
         otp_verified: false,
-        resend_otp_attempts: { increment: 1 },
+        resend_otp_attempts: user.resend_otp_attempts ? user.resend_otp_attempts + 1 : 1,
         resend_otp_limit_expires_at: null,
       },
     });
