@@ -48,7 +48,7 @@ export const cartService = {
 
     if (!cart) {
       cart = await prisma.cart.create({
-        data: { user_id: userId, status: 'ACTIVE' }
+        data: { user_id: userId, status: 'ACTIVE', converted_at: null }
       });
     }
 
