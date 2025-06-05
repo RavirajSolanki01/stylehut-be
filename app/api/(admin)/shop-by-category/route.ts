@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
         status: HttpStatus.BAD_REQUEST,
       });
     }
-    console.log(fields.name?.[0].trim(), "fields.name?.[0].trim()");
     const shopByCategoryData = {
       name: fields.name?.[0].trim() || "",
       minDiscount: parseInt(fields.minDiscount?.[0] || "0"),
@@ -48,8 +47,6 @@ export async function POST(request: NextRequest) {
       user_id: parseInt(request.headers.get("x-user-id") || "0"),
     };
 
-    console.log(shopByCategoryData, "shopByCategoryData");
-
     // Check for duplicate entry
     const existingShop = await shopByCategoryService.getShopByCategoryByCriteria({
       name: shopByCategoryData.name,
@@ -57,8 +54,6 @@ export async function POST(request: NextRequest) {
       minDiscount: shopByCategoryData.minDiscount,
       maxDiscount: shopByCategoryData.maxDiscount,
     });
-
-    console.log(existingShop, "existingShop");
 
     if (existingShop) {
       return NextResponse.json(

@@ -1,5 +1,10 @@
 import { PrismaClient } from "@prisma/client";
-import { CreateProductDto, UpdateProductDto } from "../types/product.types";
+import {
+  CreateProductAdditionalDetailDto,
+  CreateProductDto,
+  UpdateProductAdditionalDetailDto,
+  UpdateProductDto,
+} from "../types/product.types";
 import {
   ProductOrderBy,
   ProductInclude,
@@ -513,5 +518,251 @@ export const productService = {
       console.error("Remove product images error:", error);
       throw error;
     }
+  },
+
+  // async createProductAdditionalDetail(productId: number, data: CreateProductAdditionalDetailDto) {
+  //   try {
+  //     const result = await prisma.$transaction(async prisma => {
+  //       // Create or update attributes if provided
+  //       const createdAttributes = data.product_article_attributes
+  //         ? await Promise.all(
+  //             data.product_article_attributes.map(async (attr: { key: string; value: string }) => {
+  //               // Check if attribute with same key already exists for this product
+  //               const existingAttr = await prisma.product_article_attribute.findFirst({
+  //                 where: {
+  //                   productId,
+  //                   key: attr.key,
+  //                 },
+  //               });
+
+  //               if (existingAttr) {
+  //                 // Update existing attribute
+  //                 return prisma.product_article_attribute.update({
+  //                   where: {
+  //                     id: existingAttr.id,
+  //                   },
+  //                   data: {
+  //                     value: attr.value,
+  //                   },
+  //                 });
+  //               } else {
+  //                 // Create new attribute
+  //                 return prisma.product_article_attribute.create({
+  //                   data: {
+  //                     productId,
+  //                     key: attr.key,
+  //                     value: attr.value,
+  //                   },
+  //                 });
+  //               }
+  //             })
+  //           )
+  //         : [];
+
+  //       // Create details if provided
+  //       const createdDetails = data.product_details
+  //         ? await Promise.all(
+  //             data.product_details.map(
+  //               async (detail: {
+  //                 title: string;
+  //                 description: string;
+  //                 type?: string;
+  //                 content?: string;
+  //               }) => {
+  //                 // Check if attribute with same key already exists for this product
+  //                 const existingAttr = await prisma.product_detail.findFirst({
+  //                   where: {
+  //                     productId,
+  //                     title: detail.title,
+  //                   },
+  //                 });
+
+  //                 if (existingAttr) {
+  //                   // Update existing attribute
+  //                   return prisma.product_detail.update({
+  //                     where: {
+  //                       id: existingAttr.id,
+  //                     },
+  //                     data: {
+  //                       description: detail.description,
+  //                       type: detail?.type ?? existingAttr.type,
+  //                       content: detail?.content ?? existingAttr.content,
+  //                     },
+  //                   });
+  //                 } else {
+  //                   return prisma.product_detail.create({
+  //                     data: {
+  //                       productId,
+  //                       title: detail.title,
+  //                       description: detail.description,
+  //                       type: detail?.type ?? "",
+  //                       content: detail?.content ?? "",
+  //                     },
+  //                   });
+  //                 }
+  //               }
+  //             )
+  //           )
+  //         : [];
+
+  //       return {
+  //         attributes: createdAttributes,
+  //         details: createdDetails,
+  //       };
+  //     });
+  //     return result;
+  //   } catch (error) {
+  //     console.error("Create product additional detail error:", error);
+  //     throw error;
+  //   }
+  // },
+
+  // async updateProductAdditionalDetail(productId: number, data: UpdateProductAdditionalDetailDto) {
+  //   return await prisma.$transaction(async prisma => {
+  //     try {
+  //       const [existingDetails, existingAttributes] = await Promise.all([
+  //         prisma.product_detail.findMany({
+  //           where: { productId },
+  //           select: { id: true, title: true },
+  //         }),
+  //         prisma.product_article_attribute.findMany({
+  //           where: { productId },
+  //           select: { id: true, key: true },
+  //         }),
+  //       ]);
+
+  //       const existingDetailsMap = new Map(existingDetails.map(d => [d.id, d]));
+  //       const existingTitleMap = new Map(existingDetails.map(d => [d.title, d]));
+
+  //       const incomingDetails = data.product_details || [];
+  //       const updatedDetails = [];
+  //       const preservedDetailIds = new Set<number>();
+
+  //       for (const detail of incomingDetails) {
+  //         try {
+  //           const detailToUpdate = detail.id
+  //             ? existingDetailsMap.get(detail.id)
+  //             : existingTitleMap.get(detail.title); // fallback to title match
+
+  //           if (detailToUpdate) {
+  //             preservedDetailIds.add(detailToUpdate.id);
+  //             const updated = await prisma.product_detail.update({
+  //               where: { id: detailToUpdate.id },
+  //               data: {
+  //                 title: detail.title,
+  //                 description: detail.description,
+  //                 type: detail.type ?? "",
+  //                 content: detail.content ?? "",
+  //               },
+  //             });
+  //             updatedDetails.push(updated);
+  //           } else {
+  //             const created = await prisma.product_detail.create({
+  //               data: {
+  //                 productId,
+  //                 title: detail.title,
+  //                 description: detail.description,
+  //                 type: detail.type ?? "",
+  //                 content: detail.content ?? "",
+  //               },
+  //             });
+  //             updatedDetails.push(created);
+  //           }
+  //         } catch (error) {
+  //           console.error(`Error processing detail with title ${detail.title}:`, error);
+  //         }
+  //       }
+
+  //       // Now delete only those not preserved
+  //       const detailsToDelete = existingDetails.filter(d => !preservedDetailIds.has(d.id));
+  //       if (detailsToDelete.length > 0) {
+  //         await prisma.product_detail.deleteMany({
+  //           where: { id: { in: detailsToDelete.map(d => d.id) } },
+  //         });
+  //       }
+
+  //       // ============ ATTRIBUTE HANDLING ============ //
+  //       const existingAttributesMap = new Map(existingAttributes.map(a => [a.id, a]));
+  //       const existingKeyMap = new Map(existingAttributes.map(a => [a.key, a]));
+
+  //       const incomingAttributes = data.product_article_attributes || [];
+  //       const updatedAttributes = [];
+  //       const preservedAttributeIds = new Set<number>();
+
+  //       for (const attr of incomingAttributes) {
+  //         try {
+  //           const attrToUpdate = attr.id
+  //             ? existingAttributesMap.get(attr.id)
+  //             : existingKeyMap.get(attr.key); // fallback to key match
+
+  //           if (attrToUpdate) {
+  //             preservedAttributeIds.add(attrToUpdate.id);
+  //             const updated = await prisma.product_article_attribute.update({
+  //               where: { id: attrToUpdate.id },
+  //               data: {
+  //                 key: attr.key,
+  //                 value: attr.value,
+  //               },
+  //             });
+  //             updatedAttributes.push(updated);
+  //           } else {
+  //             const created = await prisma.product_article_attribute.create({
+  //               data: {
+  //                 productId,
+  //                 key: attr.key,
+  //                 value: attr.value,
+  //               },
+  //             });
+  //             updatedAttributes.push(created);
+  //           }
+  //         } catch (error) {
+  //           console.error(`Error processing attribute with key ${attr.key}:`, error);
+  //         }
+  //       }
+
+  //       const attributesToDelete = existingAttributes.filter(a => !preservedAttributeIds.has(a.id));
+  //       if (attributesToDelete.length > 0) {
+  //         await prisma.product_article_attribute.deleteMany({
+  //           where: { id: { in: attributesToDelete.map(a => a.id) } },
+  //         });
+  //       }
+
+  //       return {
+  //         attributes: updatedAttributes,
+  //         details: updatedDetails,
+  //       };
+  //     } catch (error) {
+  //       console.error("Update product additional detail error:", error);
+  //       throw error;
+  //     }
+  //   });
+  // },
+
+  async createProductAdditionalKey(data: { name: string }) {
+    return await prisma.product_additional_detail_key.create({
+      data,
+    });
+  },
+
+  async checkProductAdditionalKeyPresent(name: string) {
+    return await prisma.product_additional_detail_key.findUnique({
+      where: {
+        name,
+      },
+    });
+  },
+
+  async createProductSpecificationKey(data: { name: string }) {
+    return await prisma.product_specification_key.create({
+      data,
+    });
+  },
+
+  async checkProductSpecificationKeyPresent(name: string) {
+    return await prisma.product_specification_key.findUnique({
+      where: {
+        name,
+      },
+    });
   },
 };

@@ -23,3 +23,31 @@ export interface ProductResponse extends CreateProductDto {
   updated_at: Date;
   is_deleted: boolean;
 }
+
+export interface CreateProductAdditionalDetailDto {
+  product_article_attributes: {
+    key: string;
+    value: string;
+  }[];
+  product_details: {
+    title: string;
+    description: string;
+    type?: string;
+    content?: string;
+  }[];
+}
+
+export interface UpdateProductAdditionalDetailDto {
+  product_article_attributes: {
+    id?: number;
+    key: string;
+    value: string;
+  }[];
+  product_details: {
+    id?: number;
+    title: string;
+    description: string;
+    type?: string;
+    content?: string;
+  }[];
+}

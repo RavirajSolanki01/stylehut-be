@@ -90,6 +90,40 @@ export const productQuerySchema = z.object({
     .transform(val => parseInt(val || "100")),
 });
 
+export const productAdditionalCreateSchema = z.object({
+  product_article_attributes: z
+    .array(z.object({ key: z.string().trim(), value: z.string().trim() }))
+    .min(1, "At least one product article attribute is required"),
+  product_details: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      type: z.string().optional(),
+      content: z.string().optional(),
+    })
+  ),
+});
+
+export const productAdditionalUpdateSchema = z.object({
+  product_article_attributes: z.array(z.object({ key: z.string(), value: z.string() })),
+  product_details: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      type: z.string().optional(),
+      content: z.string().optional(),
+    })
+  ),
+});
+
+export const productAdditionalKeySchema = z.object({
+  name: z.string().trim(),
+});
+
+export const productSpecificationSchema = z.object({
+  name: z.string().trim(),
+});
+
 // Types inferred from schemas
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

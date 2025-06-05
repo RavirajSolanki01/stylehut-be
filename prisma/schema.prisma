@@ -194,11 +194,52 @@ model products {
   order_items          order_items[]
   // size_quantity        size_quantity? @relation(fields: [size_quantity_id], references: [id])
   size_quantities        size_quantity[]
+  product_specifications product_specifications[]
+  product_additional_details product_additional_details[]
 
   @@index([category_id])
   @@index([brand_id])
   @@index([is_deleted])
 }
+
+model product_specifications {
+  id         Int      @id @default(autoincrement())
+  product_id  Int
+  specification_id Int 
+  value      String
+  products    products  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_specification_key product_specification_key @relation(fields: [specification_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, specification_id]) // optional if you want unique keys per product
+}
+
+model product_additional_details {
+  id         Int      @id @default(autoincrement())
+  product_id  Int
+  key_id Int
+  value String
+  products    products  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_additional_detail_key product_additional_detail_key @relation(fields: [key_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, key_id]) // optional if you want unique titles per product
+}
+
+model product_specification_key {
+  id         Int      @id @default(autoincrement())
+  name      String
+  product_specifications    product_specifications[]
+
+  @@unique([name]) // optional if you want unique titles per product
+}
+
+model product_additional_detail_key {
+  id         Int      @id @default(autoincrement())
+  name      String
+  product_additional_details product_additional_details[]
+
+  @@unique([name]) // optional if you want unique titles per product
+}
+
 model size_quantity {
   id                Int @id @default(autoincrement())
   quantity          Int
