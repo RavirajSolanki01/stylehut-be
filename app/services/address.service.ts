@@ -98,6 +98,27 @@ export const addressService = {
       throw new Error('Address not found');
     }
 
+    if (address.is_default && data.is_default === false) {
+      // Find another non-deleted address to make default
+      const otherAddress = await prisma.address.findFirst({
+        where: {
+          user_id: userId,
+          is_deleted: false,
+          id: { not: id }
+        },
+        orderBy: { created_at: 'asc' }
+      });
+
+      if (otherAddress) {
+        await prisma.address.update({
+          where: { id: otherAddress.id },
+          data: { is_default: true }
+        });
+      } else {
+        data.is_default = true;
+      }
+    }
+
     // If setting as default, remove default from other addresses
     if (data.is_default) {
       await prisma.address.updateMany({
@@ -126,6 +147,24 @@ export const addressService = {
     const address = await this.getAddressById(userId, id);
     if (!address) {
       throw new Error('Address not found');
+    }
+
+    if (address.is_default) {
+      const otherAddress = await prisma.address.findFirst({
+        where: {
+          user_id: userId,
+          is_deleted: false,
+          id: { not: id }
+        },
+        orderBy: { created_at: 'asc' }
+      });
+
+      if (otherAddress) {
+        await prisma.address.update({
+          where: { id: otherAddress.id },
+          data: { is_default: true }
+        });
+      }
     }
 
     return await prisma.address.update({
