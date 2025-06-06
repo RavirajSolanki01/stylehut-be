@@ -178,6 +178,15 @@ export const wishlistService = {
             discount: true,
             category: true,
             brand: true,
+            size_quantities: {
+              include: {
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -215,7 +224,15 @@ export const wishlistService = {
               discount: true,
               category: true,
               brand: true,
-              size_quantities: true,
+              size_quantities: {
+                include: {
+                  size_data: {
+                    include: {
+                      size_chart_data: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -246,7 +263,15 @@ export const wishlistService = {
             discount: true,
             category: true,
             brand: true,
-            size_quantities: true
+            size_quantities: {
+              include: {
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
