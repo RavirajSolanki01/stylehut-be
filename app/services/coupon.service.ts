@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { subDays } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -103,7 +104,7 @@ export const couponService = {
       where: {
         is_active: true,
         expiry_date: {
-          gte: new Date(), // not expired
+          gte: subDays(new Date(), 15), // not expired
         },
         min_order_amount: {
           lte: params.cart_amount, // minimum order amount must be ≤ cart value
