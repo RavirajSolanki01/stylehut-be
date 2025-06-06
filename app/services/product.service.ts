@@ -740,29 +740,255 @@ export const productService = {
 
   async createProductAdditionalKey(data: { name: string }) {
     return await prisma.product_additional_detail_key.create({
-      data,
+      data: {
+        name: data.name.trim(),
+      },
     });
   },
 
   async checkProductAdditionalKeyPresent(name: string) {
-    return await prisma.product_additional_detail_key.findUnique({
+    return await prisma.product_additional_detail_key.findFirst({
       where: {
-        name,
+        name: {
+          equals: name.trim(),
+          mode: "insensitive",
+        },
+        is_deleted: false,
       },
     });
+  },
+
+  async checkProductAdditionalKeyPresentWithId(name: string, id: number) {
+    return await prisma.product_additional_detail_key.findFirst({
+      where: {
+        name: {
+          equals: name.trim(),
+          mode: "insensitive",
+        },
+        id: {
+          not: id,
+        },
+        is_deleted: false,
+      },
+    });
+  },
+
+  async checkProductAdditionalKeyAssociatedWithProduct(additionalKeyId: number) {
+    return await prisma.products.findFirst({
+      where: {
+        product_additional_details: {
+          some: {
+            additional_key_id: additionalKeyId,
+          },
+        },
+        is_deleted: false,
+      },
+    });
+  },
+
+  async deleteProductAdditionalKey(id: number) {
+    return await prisma.product_additional_detail_key.update({
+      where: { id },
+      data: {
+        is_deleted: true,
+      },
+    });
+  },
+
+  async updateProductAdditionalKey(id: number, data: { name: string }) {
+    return await prisma.product_additional_detail_key.update({
+      where: { id },
+      data: {
+        name: data.name.trim(),
+      },
+    });
+  },
+
+  async getSingleProductAdditionalKey(id: number) {
+    return await prisma.product_additional_detail_key.findUnique({
+      where: { id, is_deleted: false },
+    });
+  },
+
+  async getAllProductAdditionalKey(options?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    search?: string;
+  }) {
+    const page = options?.page || 1;
+    const limit = options?.limit || 10;
+    const skip = (page - 1) * limit;
+    const sortBy = options?.sortBy || "created_at";
+    const sortOrder = options?.sortOrder || "desc";
+    const search = options?.search?.trim();
+
+    // Build the where clause with search condition
+    const whereClause: any = {
+      is_deleted: false,
+    };
+
+    if (search) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.product_additional_detail_key.findMany({
+        where: whereClause,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.product_additional_detail_key.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   },
 
   async createProductSpecificationKey(data: { name: string }) {
     return await prisma.product_specification_key.create({
-      data,
+      data: {
+        name: data.name.trim(),
+      },
     });
   },
 
   async checkProductSpecificationKeyPresent(name: string) {
-    return await prisma.product_specification_key.findUnique({
+    return await prisma.product_specification_key.findFirst({
       where: {
-        name,
+        name: {
+          equals: name.trim(),
+          mode: "insensitive",
+        },
+        is_deleted: false,
       },
     });
+  },
+
+  async checkProductSpecificationKeyPresentWithId(name: string, id: number) {
+    return await prisma.product_specification_key.findFirst({
+      where: {
+        name: {
+          equals: name.trim(),
+          mode: "insensitive",
+        },
+        id: {
+          not: id,
+        },
+        is_deleted: false,
+      },
+    });
+  },
+
+  async checkProductSpecificationAssociatedWithProduct(specificationId: number) {
+    return await prisma.products.findFirst({
+      where: {
+        product_specifications: {
+          some: {
+            specification_key_id: specificationId,
+          },
+        },
+        is_deleted: false,
+      },
+    });
+  },
+
+  async deleteProductSpecificationKey(id: number) {
+    return await prisma.product_specification_key.update({
+      where: { id },
+      data: {
+        is_deleted: true,
+      },
+    });
+  },
+
+  async updateProductSpecificationKey(id: number, data: { name: string }) {
+    return await prisma.product_specification_key.update({
+      where: { id },
+      data: {
+        name: data.name.trim(),
+      },
+    });
+  },
+
+  async getSingleProductSpecificationKey(id: number) {
+    return await prisma.product_specification_key.findUnique({
+      where: { id, is_deleted: false },
+    });
+  },
+
+  async getAllProductSpecificationKey(options?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    search?: string;
+  }) {
+    const page = options?.page || 1;
+    const limit = options?.limit || 10;
+    const skip = (page - 1) * limit;
+    const sortBy = options?.sortBy || "created_at";
+    const sortOrder = options?.sortOrder || "desc";
+    const search = options?.search?.trim();
+
+    // Build the where clause with search condition
+    const whereClause: any = {
+      is_deleted: false,
+    };
+
+    if (search) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.product_specification_key.findMany({
+        where: whereClause,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.product_specification_key.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   },
 };
