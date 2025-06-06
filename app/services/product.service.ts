@@ -166,6 +166,11 @@ export const productService = {
           sub_category: true,
           sub_category_type: true,
           brand: true,
+          size_quantities: {
+            include: {
+              size_data: true,
+            },
+          },
         },
       });
 
@@ -371,7 +376,11 @@ export const productService = {
         include: {
           size_quantities: {
             include: {
-              size_data: true,
+              size_data: {
+                include: {
+                  size_chart_data: true,
+                },
+              },
             },
           },
           brand: true,
@@ -442,7 +451,11 @@ export const productService = {
           brand: true,
           size_quantities: {
             include: {
-              size_data: true,
+              size_data: {
+                include: {
+                  size_chart_data: true,
+                },
+              },
             },
           },
         },
