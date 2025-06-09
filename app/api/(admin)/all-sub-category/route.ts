@@ -8,9 +8,16 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+
+    const categoryId = searchParams.get("categoryId");
     const where: Prisma.sub_categoryWhereInput = {
       is_deleted: false,
     };
+
+    if (categoryId) {
+      where.category_id = +categoryId;
+    }
 
     const subCategories = await prisma.sub_category.findMany({
       where,
@@ -18,9 +25,7 @@ export async function GET(req: Request) {
         category: true,
       },
       orderBy: {
-        category: {
-          name: "asc",
-        },
+        name: "asc",
       },
     });
 
