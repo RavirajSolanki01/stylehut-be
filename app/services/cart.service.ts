@@ -24,7 +24,11 @@ export const cartService = {
           }
         },
         include: {
-          size_data: true
+          size_data: {
+            include: {
+              size_chart_data: true,
+            },
+          }
         }
       })
     ]);
@@ -77,7 +81,11 @@ export const cartService = {
           },
           size_quantity: {
             include: {
-              size_data: true
+              size_data: {
+                include: {
+                  size_chart_data: true,
+                },
+              }
             }
           }
         }
@@ -102,9 +110,13 @@ export const cartService = {
         },
         size_quantity: {
           include: {
-            size_data: true
-          }
-        }
+            size_data: {
+              include: {
+                size_chart_data: true,
+              },
+            },
+          },
+        },
       }
     });
   },
@@ -154,7 +166,11 @@ export const cartService = {
             },
             size_quantity: {
               include: {
-                size_data: true
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
+                }
               }
             }
           }
@@ -228,7 +244,16 @@ export const cartService = {
             category: true,
             sub_category: true,
             sub_category_type: true,
-            brand: true
+            brand: true,
+          }
+        },
+        size_quantity: {
+          include: {
+            size_data: {
+              include: {
+                size_chart_data: true,
+              },
+            }
           }
         }
       }
@@ -374,6 +399,15 @@ export const cartService = {
                   discount: true,
                   image: true
                 }
+              },
+              size_quantity: {
+                include: {
+                  size_data: {
+                    include: {
+                      size_chart_data: true,
+                    },
+                  }
+                }
               }
             }
           },
@@ -491,6 +525,15 @@ export const cartService = {
                     last_name: true,
                     email: true
                   }
+                }
+              }
+            },
+            size_quantity: {
+              include: {
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
                 }
               }
             }

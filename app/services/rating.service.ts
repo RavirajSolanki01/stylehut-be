@@ -34,6 +34,7 @@ export const ratingService = {
             id: true,
             name: true,
             image: true,
+            size_quantities: true
           },
         },
       },
