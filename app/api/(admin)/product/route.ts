@@ -15,6 +15,8 @@ import {
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { FormattedProduct } from "@/app/types/rating.types";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 // Configure Next.js to handle file uploads
 export const config = {
   api: {
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
         "brand_id",
       ],
       fileFields: ["images"],
+      jsonFields: ["product_additional_details", "product_specifications"],
     })({ ...fields, ...files });
     if ("status" in validation) {
       return validation;
@@ -86,11 +89,103 @@ export async function POST(request: NextRequest) {
       size_quantity_id: parseInt(fields.size_quantity_id?.[0] || "0"),
       custom_product_id: fields.custom_product_id?.[0] || "",
       variant_id: fields.variant_id?.[0] || "",
-      is_main_product: fields.is_main_product?.[0] === "true" ? true : false,
+      is_main_product: fields.is_main_product?.[0] === "true",
+
+      product_additional_details: fields.product_additional_details
+        ? (() => {
+            let details = fields.product_additional_details;
+            if (typeof details === "string") {
+              details = JSON.parse(details);
+            }
+            if (Array.isArray(details) && details.length === 1 && Array.isArray(details[0])) {
+              details = details[0];
+            }
+            if (!Array.isArray(details)) return [];
+
+            return details.map((item: any) => ({
+              id: Number(item.id),
+              value: String(item.value),
+            }));
+          })()
+        : [],
+
+      product_specifications: fields.product_specifications
+        ? (() => {
+            let specs = fields.product_specifications;
+            if (typeof specs === "string") {
+              specs = JSON.parse(specs);
+            }
+            if (Array.isArray(specs) && specs.length === 1 && Array.isArray(specs[0])) {
+              specs = specs[0];
+            }
+            if (!Array.isArray(specs)) return [];
+
+            return specs.map((item: any) => ({
+              id: Number(item.id),
+              value: String(item.value),
+            }));
+          })()
+        : [],
     };
 
-    // Convert files to array
     const images = Array.isArray(files.images) ? files.images : files.images ? [files.images] : [];
+    if (
+      productData.product_additional_details &&
+      productData.product_additional_details.length > 0
+    ) {
+      const productAdditionalDetailIds = productData.product_additional_details.map(
+        spec => spec.id
+      );
+
+      // Check if all specification keys exist and are not deleted
+      const existingKeys = await prisma.product_additional_detail_key.findMany({
+        where: {
+          id: { in: productAdditionalDetailIds },
+          is_deleted: false,
+        },
+        select: { id: true },
+      });
+      // Check if any specified key is missing
+      const existingKeyIds = new Set(existingKeys.map(key => key.id));
+      const missingKeys = productAdditionalDetailIds.filter(id => !existingKeyIds.has(id));
+
+      if (missingKeys.length > 0) {
+        return NextResponse.json(
+          errorResponse(
+            `Some additional detail keys are missing or deleted in product additional details: ${missingKeys.join(", ")}`,
+            HttpStatus.BAD_REQUEST
+          ),
+          { status: HttpStatus.BAD_REQUEST }
+        );
+      }
+    }
+
+    if (productData.product_specifications && productData.product_specifications.length > 0) {
+      const specificationKeyIds = productData.product_specifications.map(spec => spec.id);
+
+      // Check if all specification keys exist and are not deleted
+      const existingKeys = await prisma.product_specification_key.findMany({
+        where: {
+          id: { in: specificationKeyIds },
+          is_deleted: false,
+        },
+        select: { id: true },
+      });
+
+      // Check if any specified key is missing
+      const existingKeyIds = new Set(existingKeys.map(key => key.id));
+      const missingKeys = specificationKeyIds.filter(id => !existingKeyIds.has(id));
+
+      if (missingKeys.length > 0) {
+        return NextResponse.json(
+          errorResponse(
+            `Some additional detail keys are missing or deleted in specification keys: ${missingKeys.join(", ")}`,
+            HttpStatus.BAD_REQUEST
+          ),
+          { status: HttpStatus.BAD_REQUEST }
+        );
+      }
+    }
 
     const product = await productService.createProduct(productData, images);
 

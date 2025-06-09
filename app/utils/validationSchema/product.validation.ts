@@ -37,7 +37,55 @@ export const createProductSchema = z.object({
   images: z
     .array(z.object({}))
     .min(1, "At least one image is required")
-    .max(5, "Maximum 5 images allowed"),
+    .max(5, "Maximum 5 images allowed")
+    .optional(),
+  product_additional_details: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Additional detail ID must be an integer")
+          .positive("Additional detail ID must be positive"),
+        value: z.string().min(1, "Additional detail value is required"),
+      })
+    )
+    .min(1, "At least one additional detail is required"),
+  product_specifications: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Specification ID must be an integer")
+          .positive("Specification ID must be positive"),
+        value: z.string().min(1, "Specification value is required"),
+      })
+    )
+    .min(1, "At least one specification is required"),
+});
+
+export const productSpecificationAdditionalSchema = z.object({
+  product_additional_details: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Additional detail ID must be an integer")
+          .positive("Additional detail ID must be positive"),
+        value: z.string().min(1, "Additional detail value is required"),
+      })
+    )
+    .min(1, "At least one additional detail is required"),
+  product_specifications: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Specification ID must be an integer")
+          .positive("Specification ID must be positive"),
+        value: z.string().min(1, "Specification value is required"),
+      })
+    )
+    .min(1, "At least one specification is required"),
 });
 
 // Product update schema

@@ -1,10 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import {
-  CreateProductAdditionalDetailDto,
-  CreateProductDto,
-  UpdateProductAdditionalDetailDto,
-  UpdateProductDto,
-} from "../types/product.types";
+import { CreateProductDto, UpdateProductDto } from "../types/product.types";
 import {
   ProductOrderBy,
   ProductInclude,
@@ -19,7 +14,6 @@ import type { ProductQueryInput } from "../utils/validationSchema/product.valida
 const prisma = new PrismaClient();
 
 export const productService = {
-  // async createProduct(data: CreateProductDto, files: Blob[]) {
   async createProduct(data: CreateProductDto, files: File[]) {
     try {
       // Upload images to Cloudinary
@@ -32,30 +26,83 @@ export const productService = {
         },
       });
 
-      return await prisma.products.create({
-        data: {
-          ...data,
-          image: imageUrls,
-          custom_product_id: data.custom_product_id,
-          is_deleted: false,
-          size_quantities: {
-            connect: allSizeData.map(size => ({ id: size.id })),
-          },
-          is_main_product: data.is_main_product,
-          variant_id: data.variant_id,
-        },
-        include: {
-          category: true, // this will populate the category_id data
-          sub_category: true, // this will populate the sub_category_id data
-          sub_category_type: true, // this will populate the sub_category_type_id data
-          brand: true, // this will populate the brand_id data
-          size_quantities: {
-            include: {
-              size_data: true,
+      const { product_additional_details, product_specifications, ...productData } = data;
+
+      const result = await prisma.$transaction(async prisma => {
+        // Create the main product
+        const product = await prisma.products.create({
+          data: {
+            name: productData.name,
+            description: productData.description,
+            price: productData.price,
+            discount: productData.discount,
+            category_id: productData.category_id,
+            sub_category_id: productData.sub_category_id,
+            sub_category_type_id: productData.sub_category_type_id,
+            brand_id: productData.brand_id,
+            custom_product_id: productData.custom_product_id,
+            is_main_product: productData.is_main_product ?? true,
+            variant_id: productData.variant_id,
+            image: imageUrls,
+            is_deleted: false,
+            size_quantities: {
+              connect: allSizeData.map(size => ({ id: size.id })),
             },
           },
-        },
+        });
+
+        // Handle product additional details
+        if (product_additional_details && product_additional_details?.length > 0) {
+          await prisma.product_additional_details.createMany({
+            data: product_additional_details.map(detail => ({
+              product_id: product.id,
+              additional_key_id: detail.id,
+              value: detail.value,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        // Handle product specifications
+        if (product_specifications && product_specifications?.length > 0) {
+          await prisma.product_specifications.createMany({
+            data: product_specifications.map(spec => ({
+              product_id: product.id,
+              specification_key_id: spec.id,
+              value: spec.value,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        // Fetch the full product with relations
+        return prisma.products.findUnique({
+          where: { id: product.id },
+          include: {
+            category: true,
+            sub_category: true,
+            sub_category_type: true,
+            brand: true,
+            size_quantities: {
+              include: {
+                size_data: true,
+              },
+            },
+            product_additional_details: {
+              include: {
+                product_additional_detail_key: true,
+              },
+            },
+            product_specifications: {
+              include: {
+                product_specification_key: true,
+              },
+            },
+          },
+        });
       });
+
+      return result;
     } catch (error) {
       console.error("Create product error:", error);
       throw error;
@@ -329,6 +376,16 @@ export const productService = {
             },
           },
         },
+        product_additional_details: {
+          include: {
+            product_additional_detail_key: true,
+          },
+        },
+        product_specifications: {
+          include: {
+            product_specification_key: true,
+          },
+        },
       },
     });
 
@@ -414,12 +471,18 @@ export const productService = {
       // Get existing product
       const existingProduct = await prisma.products.findUnique({
         where: { id },
-        select: { image: true },
+        select: {
+          image: true,
+          custom_product_id: true,
+        },
       });
 
       if (!existingProduct) {
         throw new Error("Product not found");
       }
+
+      // Extract additional details and specifications from the data
+      const { product_additional_details, product_specifications, ...productData } = data;
 
       let imageUrls = [...existingProduct.image];
 
@@ -427,43 +490,219 @@ export const productService = {
         const newImageUrls = await Promise.all(
           files.map(file => uploadToCloudinary(file.filepath))
         );
-
         imageUrls = [...imageUrls, ...newImageUrls];
       }
+
+      const customProductId = data.custom_product_id || existingProduct.custom_product_id;
       const allSizeData = await prisma.size_quantity.findMany({
         where: {
-          custom_product_id: data.custom_product_id,
+          custom_product_id: customProductId,
           is_deleted: false,
         },
       });
 
-      return await prisma.products.update({
-        where: { id },
-        data: {
-          ...data,
-          ...(imageUrls && { image: imageUrls }),
-          updated_at: new Date(),
-          size_quantities: {
-            connect: allSizeData.map(size => ({
-              id: size.id,
-            })),
+      // Use transaction to ensure data consistency
+      return await prisma.$transaction(async prisma => {
+        // Update the product
+        const updatedProduct = await prisma.products.update({
+          where: { id },
+          data: {
+            name: productData.name,
+            description: productData.description,
+            price: productData.price,
+            discount: productData.discount,
+            category_id: productData.category_id,
+            sub_category_id: productData.sub_category_id,
+            sub_category_type_id: productData.sub_category_type_id,
+            brand_id: productData.brand_id,
+            custom_product_id: customProductId,
+            is_main_product: productData.is_main_product,
+            variant_id: productData.variant_id,
+            image: imageUrls,
+            updated_at: new Date(),
+            size_quantities: {
+              set: allSizeData.map(size => ({ id: size.id })),
+            },
           },
-        },
-        include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
-          brand: true,
-          size_quantities: {
-            include: {
-              size_data: {
-                include: {
-                  size_chart_data: true,
+        });
+
+        // Update additional details if provided
+        if (product_additional_details) {
+          // Get all additional detail key IDs from the input
+          const additionalDetailKeyIds = product_additional_details.map(detail => detail.id);
+
+          // Check if all additional detail keys exist and are not deleted
+          const existingKeys = await prisma.product_additional_detail_key.findMany({
+            where: {
+              id: { in: additionalDetailKeyIds },
+              is_deleted: false,
+            },
+            select: { id: true },
+          });
+
+          // Check if any specified key is missing
+          const existingKeyIds = new Set(existingKeys.map(key => key.id));
+          const missingKeys = additionalDetailKeyIds.filter(id => !existingKeyIds.has(id));
+
+          if (missingKeys.length > 0) {
+            throw new Error(
+              `The following additional detail keys do not exist or are deleted: ${missingKeys.join(", ")}`
+            );
+          }
+
+          // Get existing additional details for this product
+          const existingDetails = await prisma.product_additional_details.findMany({
+            where: { product_id: id },
+            select: { additional_key_id: true },
+          });
+
+          const existingDetailIds = new Set(
+            existingDetails.map(detail => detail.additional_key_id)
+          );
+          const newDetails = product_additional_details.filter(
+            detail => !existingDetailIds.has(detail.id)
+          );
+          const updatedDetails = product_additional_details.filter(detail =>
+            existingDetailIds.has(detail.id)
+          );
+          const detailsToDelete = existingDetails.filter(
+            detail => !additionalDetailKeyIds.includes(detail.additional_key_id)
+          );
+
+          // Delete additional details that are no longer needed
+          if (detailsToDelete.length > 0) {
+            await prisma.product_additional_details.deleteMany({
+              where: {
+                product_id: id,
+                additional_key_id: { in: detailsToDelete.map(d => d.additional_key_id) },
+              },
+            });
+          }
+
+          // Create new additional details
+          if (newDetails.length > 0) {
+            await prisma.product_additional_details.createMany({
+              data: newDetails.map(detail => ({
+                product_id: id,
+                additional_key_id: detail.id,
+                value: detail.value,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          // Update existing additional details
+          await Promise.all(
+            updatedDetails.map(detail =>
+              prisma.product_additional_details.updateMany({
+                where: {
+                  product_id: id,
+                  additional_key_id: detail.id,
                 },
+                data: { value: detail.value },
+              })
+            )
+          );
+        }
+
+        // Update specifications if provided
+        if (product_specifications) {
+          // Get all specification key IDs from the input
+          const specificationKeyIds = product_specifications.map(spec => spec.id);
+
+          // Check if all specification keys exist and are not deleted
+          const existingKeys = await prisma.product_specification_key.findMany({
+            where: {
+              id: { in: specificationKeyIds },
+              is_deleted: false,
+            },
+            select: { id: true },
+          });
+
+          // Check if any specified key is missing
+          const existingKeyIds = new Set(existingKeys.map(key => key.id));
+          const missingKeys = specificationKeyIds.filter(id => !existingKeyIds.has(id));
+
+          if (missingKeys.length > 0) {
+            throw new Error(
+              `The following specification keys do not exist or are deleted: ${missingKeys.join(", ")}`
+            );
+          }
+
+          // Get existing specifications for this product
+          const existingSpecs = await prisma.product_specifications.findMany({
+            where: { product_id: id },
+            select: { specification_key_id: true },
+          });
+
+          const existingSpecIds = new Set(existingSpecs.map(spec => spec.specification_key_id));
+          const newSpecs = product_specifications.filter(spec => !existingSpecIds.has(spec.id));
+          const updatedSpecs = product_specifications.filter(spec => existingSpecIds.has(spec.id));
+          const specsToDelete = existingSpecs.filter(
+            spec => !specificationKeyIds.includes(spec.specification_key_id)
+          );
+
+          // Delete specifications that are no longer needed
+          if (specsToDelete.length > 0) {
+            await prisma.product_specifications.deleteMany({
+              where: {
+                product_id: id,
+                specification_key_id: { in: specsToDelete.map(s => s.specification_key_id) },
+              },
+            });
+          }
+
+          // Create new specifications
+          if (newSpecs.length > 0) {
+            await prisma.product_specifications.createMany({
+              data: newSpecs.map(spec => ({
+                product_id: id,
+                specification_key_id: spec.id,
+                value: spec.value,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          // Update existing specifications
+          await Promise.all(
+            updatedSpecs.map(spec =>
+              prisma.product_specifications.updateMany({
+                where: {
+                  product_id: id,
+                  specification_key_id: spec.id,
+                },
+                data: { value: spec.value },
+              })
+            )
+          );
+        }
+
+        // Return the updated product with all relations
+        return prisma.products.findUnique({
+          where: { id },
+          include: {
+            category: true,
+            sub_category: true,
+            sub_category_type: true,
+            brand: true,
+            size_quantities: {
+              include: {
+                size_data: true,
+              },
+            },
+            product_additional_details: {
+              include: {
+                product_additional_detail_key: true,
+              },
+            },
+            product_specifications: {
+              include: {
+                product_specification_key: true,
               },
             },
           },
-        },
+        });
       });
     } catch (error) {
       console.error("Update product error:", error);
@@ -532,224 +771,6 @@ export const productService = {
       throw error;
     }
   },
-
-  // async createProductAdditionalDetail(productId: number, data: CreateProductAdditionalDetailDto) {
-  //   try {
-  //     const result = await prisma.$transaction(async prisma => {
-  //       // Create or update attributes if provided
-  //       const createdAttributes = data.product_article_attributes
-  //         ? await Promise.all(
-  //             data.product_article_attributes.map(async (attr: { key: string; value: string }) => {
-  //               // Check if attribute with same key already exists for this product
-  //               const existingAttr = await prisma.product_article_attribute.findFirst({
-  //                 where: {
-  //                   productId,
-  //                   key: attr.key,
-  //                 },
-  //               });
-
-  //               if (existingAttr) {
-  //                 // Update existing attribute
-  //                 return prisma.product_article_attribute.update({
-  //                   where: {
-  //                     id: existingAttr.id,
-  //                   },
-  //                   data: {
-  //                     value: attr.value,
-  //                   },
-  //                 });
-  //               } else {
-  //                 // Create new attribute
-  //                 return prisma.product_article_attribute.create({
-  //                   data: {
-  //                     productId,
-  //                     key: attr.key,
-  //                     value: attr.value,
-  //                   },
-  //                 });
-  //               }
-  //             })
-  //           )
-  //         : [];
-
-  //       // Create details if provided
-  //       const createdDetails = data.product_details
-  //         ? await Promise.all(
-  //             data.product_details.map(
-  //               async (detail: {
-  //                 title: string;
-  //                 description: string;
-  //                 type?: string;
-  //                 content?: string;
-  //               }) => {
-  //                 // Check if attribute with same key already exists for this product
-  //                 const existingAttr = await prisma.product_detail.findFirst({
-  //                   where: {
-  //                     productId,
-  //                     title: detail.title,
-  //                   },
-  //                 });
-
-  //                 if (existingAttr) {
-  //                   // Update existing attribute
-  //                   return prisma.product_detail.update({
-  //                     where: {
-  //                       id: existingAttr.id,
-  //                     },
-  //                     data: {
-  //                       description: detail.description,
-  //                       type: detail?.type ?? existingAttr.type,
-  //                       content: detail?.content ?? existingAttr.content,
-  //                     },
-  //                   });
-  //                 } else {
-  //                   return prisma.product_detail.create({
-  //                     data: {
-  //                       productId,
-  //                       title: detail.title,
-  //                       description: detail.description,
-  //                       type: detail?.type ?? "",
-  //                       content: detail?.content ?? "",
-  //                     },
-  //                   });
-  //                 }
-  //               }
-  //             )
-  //           )
-  //         : [];
-
-  //       return {
-  //         attributes: createdAttributes,
-  //         details: createdDetails,
-  //       };
-  //     });
-  //     return result;
-  //   } catch (error) {
-  //     console.error("Create product additional detail error:", error);
-  //     throw error;
-  //   }
-  // },
-
-  // async updateProductAdditionalDetail(productId: number, data: UpdateProductAdditionalDetailDto) {
-  //   return await prisma.$transaction(async prisma => {
-  //     try {
-  //       const [existingDetails, existingAttributes] = await Promise.all([
-  //         prisma.product_detail.findMany({
-  //           where: { productId },
-  //           select: { id: true, title: true },
-  //         }),
-  //         prisma.product_article_attribute.findMany({
-  //           where: { productId },
-  //           select: { id: true, key: true },
-  //         }),
-  //       ]);
-
-  //       const existingDetailsMap = new Map(existingDetails.map(d => [d.id, d]));
-  //       const existingTitleMap = new Map(existingDetails.map(d => [d.title, d]));
-
-  //       const incomingDetails = data.product_details || [];
-  //       const updatedDetails = [];
-  //       const preservedDetailIds = new Set<number>();
-
-  //       for (const detail of incomingDetails) {
-  //         try {
-  //           const detailToUpdate = detail.id
-  //             ? existingDetailsMap.get(detail.id)
-  //             : existingTitleMap.get(detail.title); // fallback to title match
-
-  //           if (detailToUpdate) {
-  //             preservedDetailIds.add(detailToUpdate.id);
-  //             const updated = await prisma.product_detail.update({
-  //               where: { id: detailToUpdate.id },
-  //               data: {
-  //                 title: detail.title,
-  //                 description: detail.description,
-  //                 type: detail.type ?? "",
-  //                 content: detail.content ?? "",
-  //               },
-  //             });
-  //             updatedDetails.push(updated);
-  //           } else {
-  //             const created = await prisma.product_detail.create({
-  //               data: {
-  //                 productId,
-  //                 title: detail.title,
-  //                 description: detail.description,
-  //                 type: detail.type ?? "",
-  //                 content: detail.content ?? "",
-  //               },
-  //             });
-  //             updatedDetails.push(created);
-  //           }
-  //         } catch (error) {
-  //           console.error(`Error processing detail with title ${detail.title}:`, error);
-  //         }
-  //       }
-
-  //       // Now delete only those not preserved
-  //       const detailsToDelete = existingDetails.filter(d => !preservedDetailIds.has(d.id));
-  //       if (detailsToDelete.length > 0) {
-  //         await prisma.product_detail.deleteMany({
-  //           where: { id: { in: detailsToDelete.map(d => d.id) } },
-  //         });
-  //       }
-
-  //       // ============ ATTRIBUTE HANDLING ============ //
-  //       const existingAttributesMap = new Map(existingAttributes.map(a => [a.id, a]));
-  //       const existingKeyMap = new Map(existingAttributes.map(a => [a.key, a]));
-
-  //       const incomingAttributes = data.product_article_attributes || [];
-  //       const updatedAttributes = [];
-  //       const preservedAttributeIds = new Set<number>();
-
-  //       for (const attr of incomingAttributes) {
-  //         try {
-  //           const attrToUpdate = attr.id
-  //             ? existingAttributesMap.get(attr.id)
-  //             : existingKeyMap.get(attr.key); // fallback to key match
-
-  //           if (attrToUpdate) {
-  //             preservedAttributeIds.add(attrToUpdate.id);
-  //             const updated = await prisma.product_article_attribute.update({
-  //               where: { id: attrToUpdate.id },
-  //               data: {
-  //                 key: attr.key,
-  //                 value: attr.value,
-  //               },
-  //             });
-  //             updatedAttributes.push(updated);
-  //           } else {
-  //             const created = await prisma.product_article_attribute.create({
-  //               data: {
-  //                 productId,
-  //                 key: attr.key,
-  //                 value: attr.value,
-  //               },
-  //             });
-  //             updatedAttributes.push(created);
-  //           }
-  //         } catch (error) {
-  //           console.error(`Error processing attribute with key ${attr.key}:`, error);
-  //         }
-  //       }
-
-  //       const attributesToDelete = existingAttributes.filter(a => !preservedAttributeIds.has(a.id));
-  //       if (attributesToDelete.length > 0) {
-  //         await prisma.product_article_attribute.deleteMany({
-  //           where: { id: { in: attributesToDelete.map(a => a.id) } },
-  //         });
-  //       }
-
-  //       return {
-  //         attributes: updatedAttributes,
-  //         details: updatedDetails,
-  //       };
-  //     } catch (error) {
-  //       console.error("Update product additional detail error:", error);
-  //       throw error;
-  //     }
-  //   });
-  // },
 
   async createProductAdditionalKey(data: { name: string }) {
     return await prisma.product_additional_detail_key.create({
