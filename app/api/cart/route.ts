@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { userService } from "@/app/services/user.service";
 import { cartService } from "@/app/services/cart.service";
 import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
@@ -9,6 +10,12 @@ import { checkAdminRole } from "@/app/middleware/adminAuth";
 
 export async function POST(request: NextRequest) {
   const userId = request.headers.get('x-user-id');
+  if (!(await userService.exists(Number(userId)))) {
+    return NextResponse.json(
+      errorResponse("Logged in user not found or deleted", HttpStatus.UNAUTHORIZED),
+      { status: HttpStatus.UNAUTHORIZED }
+    );
+  }
   if (!userId) {
     return NextResponse.json(
       errorResponse("Unauthorized", HttpStatus.UNAUTHORIZED),

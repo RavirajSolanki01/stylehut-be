@@ -28,7 +28,11 @@ export const cartService = {
           },
         },
         include: {
-          size_data: true,
+          size_data: {
+            include: {
+              size_chart_data: true,
+            },
+          },
         },
       }),
     ]);
@@ -54,7 +58,7 @@ export const cartService = {
 
     if (!cart) {
       cart = await prisma.cart.create({
-        data: { user_id: userId, status: "ACTIVE" },
+        data: { user_id: userId, status: "ACTIVE", converted_at: null },
       });
     }
 
@@ -91,7 +95,11 @@ export const cartService = {
           },
           size_quantity: {
             include: {
-              size_data: true,
+              size_data: {
+                include: {
+                  size_chart_data: true,
+                },
+              },
             },
           },
         },
@@ -124,7 +132,11 @@ export const cartService = {
         },
         size_quantity: {
           include: {
-            size_data: true,
+            size_data: {
+              include: {
+                size_chart_data: true,
+              },
+            },
           },
         },
       },
@@ -182,7 +194,11 @@ export const cartService = {
             },
             size_quantity: {
               include: {
-                size_data: true,
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
+                },
               },
             },
           },
@@ -261,6 +277,15 @@ export const cartService = {
               },
             },
             brand: true,
+          },
+        },
+        size_quantity: {
+          include: {
+            size_data: {
+              include: {
+                size_chart_data: true,
+              },
+            },
           },
         },
       },
@@ -401,6 +426,15 @@ export const cartService = {
                   image: true,
                 },
               },
+              size_quantity: {
+                include: {
+                  size_data: {
+                    include: {
+                      size_chart_data: true,
+                    },
+                  },
+                },
+              },
             },
           },
           user: {
@@ -520,6 +554,15 @@ export const cartService = {
                     first_name: true,
                     last_name: true,
                     email: true,
+                  },
+                },
+              },
+            },
+            size_quantity: {
+              include: {
+                size_data: {
+                  include: {
+                    size_chart_data: true,
                   },
                 },
               },

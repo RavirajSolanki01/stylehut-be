@@ -24,7 +24,14 @@ export async function POST(req: Request) {
     // Mark user as verified and remove OTP
     await prisma.users.update({
       where: { email },
-      data: { otp_verified: true, otp: null, updated_at: new Date() },
+      data: {
+        otp_verified: true,
+        otp: null,
+        updated_at: new Date(),
+        resend_otp_attempts: 0,
+        resend_otp_limit_expires_at: null,
+        otp_limit_expires_at: null,
+      },
     });
 
     // Generate Auth Token (JWT)
