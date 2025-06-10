@@ -227,19 +227,21 @@ model product_additional_details {
 model product_specification_key {
   id         Int      @id @default(autoincrement())
   name      String
-  product_specifications    product_specifications[]
+  create_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   is_deleted Boolean @default(false)
 
-  @@unique([name]) // optional if you want unique titles per product
+  product_specifications    product_specifications[]
 }
 
 model product_additional_detail_key {
   id         Int      @id @default(autoincrement())
   name      String
-  product_additional_details product_additional_details[]
+  create_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   is_deleted Boolean @default(false)
 
-  @@unique([name]) // optional if you want unique titles per product
+  product_additional_details product_additional_details[]
 }
 
 model size_quantity {

@@ -11,25 +11,36 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const name = searchParams.get("name");
+    const id = searchParams.get("id");
 
     if (!name) {
       return NextResponse.json(
-        errorResponse("Name parameter is required", HttpStatus.BAD_REQUEST),
+        successResponse("Name parameter is required", HttpStatus.BAD_REQUEST),
         { status: HttpStatus.BAD_REQUEST }
       );
     }
-    const isPresent = await productService.checkProductSpecificationKeyPresent(name);
+
+    let isPresent;
+
+    if (id) {
+      // If ID is provided, check for duplicate name excluding the current record
+      isPresent = await productService.checkProductSpecificationKeyPresentWithId(name, +id);
+    } else {
+      // If no ID is provided, check if the name exists in the system
+      isPresent = await productService.checkProductSpecificationKeyPresent(name);
+    }
+
     if (isPresent) {
-      return NextResponse.json(errorResponse("Use different name", HttpStatus.BAD_REQUEST), {
-        status: HttpStatus.BAD_REQUEST,
+      return NextResponse.json(successResponse("Use different name", { available: false }), {
+        status: HttpStatus.OK,
       });
     }
 
-    return NextResponse.json(successResponse("Name is available", {}), {
+    return NextResponse.json(successResponse("Name is available", { available: true }), {
       status: HttpStatus.OK,
     });
   } catch (error) {
-    console.error("Create specification key error:", error);
+    console.error("Check specification key error:", error);
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
       { status: HttpStatus.INTERNAL_SERVER_ERROR }

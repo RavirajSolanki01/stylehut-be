@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { errorResponse, successResponse } from "@/app/utils/apiResponse";
+import { errorResponse, paginatedResponse, successResponse } from "@/app/utils/apiResponse";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { productAdditionalKeySchema } from "@/app/utils/validationSchema/product.validation";
 import { productService } from "@/app/services/product.service";
 import { z } from "zod";
+import { COMMON_CONSTANTS } from "@/app/utils/constants";
 
 // Schema for query parameters
 const paginationQuerySchema = z.object({
@@ -48,10 +49,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      successResponse("Additional details keys retrieved successfully", {
-        data: result.data,
-        meta: result.meta,
-      }),
+      paginatedResponse(COMMON_CONSTANTS.SUCCESS, result.data, page, limit, result.meta.total),
       { status: HttpStatus.OK }
     );
   } catch (error) {
