@@ -12,7 +12,7 @@ export const sizeService = {
       has_size_chart?: boolean;
       is_cm?: boolean;
     },
-    tx: Prisma.TransactionClient = prisma// default to normal Prisma client if no transaction passed
+    tx: Prisma.TransactionClient = prisma // default to normal Prisma client if no transaction passed
   ) {
     const existingSize = await tx.size_data.findFirst({
       where: {
@@ -81,7 +81,6 @@ export const sizeService = {
       size_field_value: string;
     },
     tx: Prisma.TransactionClient = prisma
-
   ) {
     return await tx.size_chart_data.create({
       data: {
@@ -92,7 +91,7 @@ export const sizeService = {
     });
   },
 
-  async createSizes(size_data: {
+  async createSizesd(size_data: {
     size_data: {
       name: string;
       size: string;
@@ -121,6 +120,74 @@ export const sizeService = {
 
     return { message: "Sizes and size chart data created successfully (transactional)", response };
   },
+
+  // -------------------------
+
+  async createSizes(size_data: {
+    size_data: {
+      name: string;
+      size: string;
+      custom_size_id: string;
+      type?: string;
+      has_size_chart?: boolean;
+      is_cm?: boolean;
+    }[];
+    size_chart_data: {
+      custom_size_id: string;
+      size_field_name: string;
+      size_field_value: string;
+    }[];
+  }) {
+    const response = await prisma.$transaction(async tx => {
+      // Handle "restore if exists" manually before bulk insert
+      const existingSizes = await tx.size_data.findMany({
+        where: {
+          name: {
+            in: size_data.size_data.map(d => d.name),
+          },
+          is_deleted: true,
+        },
+      });
+
+      const toRestore = existingSizes.map(size => size.id);
+
+      if (toRestore.length) {
+        await tx.size_data.updateMany({
+          where: {
+            id: { in: toRestore },
+          },
+          data: { is_deleted: false },
+        });
+      }
+
+      // Filter out the restored entries to avoid duplicate insert
+      const newSizes = size_data.size_data.filter(s => !existingSizes.find(e => e.name === s.name));
+
+      // Bulk insert new size_data
+      if (newSizes.length) {
+        await tx.size_data.createMany({
+          data: newSizes,
+          skipDuplicates: true, // ensure no race condition duplicate
+        });
+      }
+
+      // Bulk insert size_chart_data
+      if (size_data.size_chart_data.length) {
+        await tx.size_chart_data.createMany({
+          data: size_data.size_chart_data,
+          skipDuplicates: true, // just in case of retries
+        });
+      }
+    });
+
+    return {
+      message: "Sizes and size chart data created successfully (optimized)",
+      response,
+    };
+  },
+
+  //-------------------------
+
   // async createSizes(
   //   dataList: {
   //     name: string;
@@ -131,6 +198,93 @@ export const sizeService = {
   //   }[]
   // ) {
   //   return await Promise.all(dataList.map(data => this.createSize(data)));
+  // },
+
+  async deleteSizes(ids: (string | number)[]) {
+    return await prisma.$transaction(async tx => {
+      const sizeIds = ids.map(Number);
+
+      // Step 1: Fetch all size_data entries
+      const sizes = await tx.size_data.findMany({
+        where: {
+          id: { in: sizeIds },
+        },
+      });
+
+      // Separate those that have size_chart and those that don't
+      const sizesWithChart = sizes.filter(s => s.has_size_chart);
+      const sizesWithoutChart = sizes.filter(s => !s.has_size_chart);
+
+      const customSizeIdsToDelete = sizesWithChart.map(s => s.custom_size_id);
+      const sizeIdsToDelete = sizes.map(s => s.id);
+
+      const operations = [];
+
+      // Step 2: Delete related size_chart_data
+      if (customSizeIdsToDelete.length > 0) {
+        operations.push(
+          tx.size_chart_data.deleteMany({
+            where: {
+              custom_size_id: { in: customSizeIdsToDelete },
+            },
+          })
+        );
+      }
+
+      // Step 3: Delete all size_data entries
+      if (sizeIdsToDelete.length > 0) {
+        operations.push(
+          tx.size_data.deleteMany({
+            where: {
+              id: { in: sizeIdsToDelete },
+            },
+          })
+        );
+      }
+
+      await Promise.all(operations); // Execute in parallel inside transaction
+    });
+  },
+
+  // async deleteSizeChart(id: string | number, tx: Prisma.TransactionClient = prisma) {
+  //   const size_data = await tx.size_data.findFirst({
+  //     where: {
+  //       id: Number(id),
+  //     },
+  //   });
+  //   if (!size_data) {
+  //     console.log("Size data not found for id:", id);
+  //     return;
+  //   }
+  //   if (size_data.has_size_chart) {
+  //     return await prisma.$transaction([
+  //       prisma.size_chart_data.deleteMany({
+  //         where: {
+  //           custom_size_id: size_data.custom_size_id,
+  //         },
+  //       }),
+  //       prisma.size_data.delete({
+  //         where: {
+  //           id: Number(id),
+  //         },
+  //       }),
+  //     ]);
+  //   } else {
+  //     return await prisma.size_data.delete({
+  //       where: {
+  //         id: Number(id),
+  //       },
+  //     });
+  //   }
+  // },
+
+  // async deleteSizes(data: string[] | number[]) {
+  //   const response = await prisma.$transaction(async tx => {
+  //     for (const id of data) {
+  //       await this.deleteSizeChart(id, tx);
+  //     }
+  //   });
+  //   return { message: "Sizes and size chart data deleted successfully (transactional)", response };
   // },
 
   async getAllSizes() {
@@ -243,5 +397,15 @@ export const sizeService = {
     }
 
     return dp[m][n];
+  },
+
+  async getSizesById(ids: (string | number)[]) {
+    const numericIds = ids.map(id => Number(id)).filter(id => !isNaN(id));
+
+    const sizes = await prisma.size_data.findMany({
+      where: { is_deleted: false, id: { in: numericIds } },
+    });
+
+    return sizes;
   },
 };
