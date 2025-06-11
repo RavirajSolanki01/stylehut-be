@@ -844,6 +844,19 @@ export const productService = {
     });
   },
 
+  async getAllProductAdditionalKeyWithoutPagination() {
+    const whereClause: any = {
+      is_deleted: false,
+    };
+
+    return await prisma.product_additional_detail_key.findMany({
+      where: whereClause,
+      orderBy: {
+        name: "asc",
+      },
+    });
+  },
+
   async getAllProductAdditionalKey(options?: {
     page?: number;
     limit?: number;
@@ -1024,5 +1037,18 @@ export const productService = {
         totalPages: Math.ceil(total / limit),
       },
     };
+  },
+
+  async getAllProductSpecificationKeyWithoutPagination() {
+    const whereClause: any = {
+      is_deleted: false,
+    };
+
+    return await prisma.product_specification_key.findMany({
+      where: whereClause,
+      orderBy: {
+        name: "asc",
+      },
+    });
   },
 };

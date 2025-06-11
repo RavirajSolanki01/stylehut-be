@@ -26,6 +26,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());
 
+    if (!searchParams.has("search")) {
+      const allItems = await productService.getAllProductSpecificationKeyWithoutPagination();
+      return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, allItems), {
+        status: HttpStatus.OK,
+      });
+    }
+
     // Validate query parameters
     const validatedQuery = paginationQuerySchema.safeParse(query);
     if (!validatedQuery.success) {
