@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { checkNameConflict } from "@/app/utils/helper";
 import { validateRequest } from "@/app/middleware/validateRequest";
+import { categoryService } from "@/app/services/category.service";
 
 const prisma = new PrismaClient();
 
@@ -55,23 +56,19 @@ export async function GET(req: Request, { params }: getCategoryParams) {
 
 export async function DELETE(req: Request, { params }: getCategoryParams) {
   try {
-    const { id } = await params;
+    const id = Number((await params).id);
 
-    const validatedId = categoryIdSchema.safeParse(+id);
+    const validatedId = categoryIdSchema.safeParse(id);
 
     if (!validatedId.success) {
       return NextResponse.json(
         errorResponse(COMMON_CONSTANTS.ID_REQUIRED, HttpStatus.BAD_REQUEST),
-        {
-          status: HttpStatus.BAD_REQUEST,
-        }
+        { status: HttpStatus.BAD_REQUEST }
       );
     }
 
     const category = await prisma.category.findUnique({
-      where: {
-        id: +id,
-      },
+      where: { id, is_deleted: false },
     });
 
     if (!category) {
@@ -79,38 +76,47 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
         status: HttpStatus.NOT_FOUND,
       });
     }
+    const [subCategories, subCategoryType, products] = await Promise.all([
+      prisma.sub_category.findFirst({
+        where: {
+          category_id: id,
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+      prisma.sub_category_type.findFirst({
+        where: {
+          sub_category: {
+            category_id: id,
+            is_deleted: false,
+          },
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+      prisma.products.findFirst({
+        where: {
+          sub_category_type: {
+            sub_category: {
+              category_id: id,
+              is_deleted: false,
+            },
+            is_deleted: false,
+          },
+          is_deleted: false,
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    const isUseInSubCategory = await prisma.sub_category.findMany({
-      where: {
-        category_id: +id,
-        is_deleted: false,
-      },
-    });
-
-    const isUseInSubType = await prisma.sub_category_type.findMany({
-      where: {
-        category_id: +id,
-        is_deleted: false,
-      },
-    });
-
-    const isUseInProduct = await prisma.products.findMany({
-      where: {
-        category_id: +id,
-        is_deleted: false,
-      },
-    });
-
-    if (isUseInSubCategory.length > 0 || isUseInSubType.length > 0 || isUseInProduct.length > 0) {
+    if (subCategories || subCategoryType || products) {
       return NextResponse.json(errorResponse(CATEGORY_CONSTANTS.IN_USED, HttpStatus.BAD_REQUEST), {
         status: HttpStatus.BAD_REQUEST,
       });
     }
 
     await prisma.category.update({
-      where: {
-        id: +id,
-      },
+      where: { id },
       data: {
         is_deleted: true,
         updated_at: new Date(),
@@ -118,24 +124,22 @@ export async function DELETE(req: Request, { params }: getCategoryParams) {
     });
 
     return NextResponse.json(successResponse(CATEGORY_CONSTANTS.DELETE_SUCCESS), {
-      status: 200,
+      status: HttpStatus.OK,
     });
   } catch (error) {
     console.error("Delete category error:", error);
     return NextResponse.json(
       errorResponse("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
-      {
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      }
+      { status: HttpStatus.INTERNAL_SERVER_ERROR }
     );
   }
 }
 
 export async function PUT(req: Request, { params }: getCategoryParams) {
   try {
-    const { id } = await params;
+    const id = Number((await params).id);
 
-    const validatedId = categoryIdSchema.safeParse(+id);
+    const validatedId = categoryIdSchema.safeParse(id);
 
     if (!validatedId.success) {
       return NextResponse.json(
@@ -156,7 +160,7 @@ export async function PUT(req: Request, { params }: getCategoryParams) {
 
     const categoryExit = await prisma.category.findFirst({
       where: {
-        id: +id,
+        id,
       },
     });
 

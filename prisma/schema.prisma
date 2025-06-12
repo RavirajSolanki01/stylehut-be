@@ -94,8 +94,6 @@ model category {
 
   //Relations
   sub_categories       sub_category[]
-  sub_category_types   sub_category_type[]
-  products             products[]
 }
 
 model sub_category {
@@ -110,24 +108,26 @@ model sub_category {
   // Relations
   category             category @relation(fields: [category_id], references: [id])
   sub_category_types   sub_category_type[]
-  products             products[]
   shop_by_category     shop_by_category[]
+
+  brands               brand[]  
+
+  @@index([category_id])
 }
 
 model sub_category_type {
   id           Int      @id @default(autoincrement()) 
   name         String   @db.VarChar(30)
   description  String   @db.VarChar(100)
-  category_id  Int
   sub_category_id Int
   create_at    DateTime @default(now())
   updated_at   DateTime @updatedAt
   is_deleted   Boolean  @default(false)
 
   // Relations
-  category             category @relation(fields: [category_id], references: [id])
   sub_category         sub_category @relation(fields: [sub_category_id], references: [id])
   products             products[]
+  @@index([sub_category_id])
 }
 
 model brand {
@@ -139,7 +139,8 @@ model brand {
   is_deleted   Boolean  @default(false)
 
   //Relations
-  products             products[]
+  products      products[]
+  sub_categories sub_category[]
 }
 
 model gender {
@@ -171,8 +172,6 @@ model products {
   discount                    Int?
   custom_product_id           String?
   // quantity                    Int
-  category_id                 Int                                    //foreign key
-  sub_category_id             Int                                    //foreign key
   sub_category_type_id        Int                                    //foreign key
   brand_id                    Int                                    //foreign key
   size_quantity_id            Int?                                   //foreign key
@@ -184,8 +183,6 @@ model products {
   variant_id                  String?
   is_main_product             Boolean  @default(true)
   // Relations
-  category             category @relation(fields: [category_id], references: [id])
-  sub_category         sub_category @relation(fields: [sub_category_id], references: [id])
   sub_category_type    sub_category_type @relation(fields: [sub_category_type_id], references: [id])
   brand                brand @relation(fields: [brand_id], references: [id])
   ratings              ratings[]
@@ -194,8 +191,7 @@ model products {
   order_items          order_items[]
   // size_quantity        size_quantity? @relation(fields: [size_quantity_id], references: [id])
   size_quantities        size_quantity[]
-
-  @@index([category_id])
+  @@index([sub_category_type_id])
   @@index([brand_id])
   @@index([is_deleted])
 }
