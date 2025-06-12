@@ -55,6 +55,25 @@ async function main() {
       fontColor: "#004300",
     },
   });
+
+  // const brands = await prisma.brand.findMany();
+
+  // // Get all subcategories
+  // const subCategories = await prisma.sub_category.findMany();
+
+  // for (const brand of brands) {
+  //   // Example: Map all subcategories to each brand
+  //   await prisma.brand.update({
+  //     where: { id: brand.id },
+  //     data: {
+  //       sub_categories: {
+  //         connect: subCategories.map(sub => ({ id: sub.id })),
+  //       },
+  //     },
+  //   });
+
+  //   console.log(`Mapped ${subCategories.length} subcategories to brand ${brand.name}`);
+  // }
 }
 
 main()

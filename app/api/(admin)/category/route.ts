@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     const page = parseInt(pageParam ? pageParam : "1") || 1;
     const pageSize = parseInt(pageSizeParam ? pageSizeParam : "10") || 10;
     const search = searchParam || "";
-    const sortBy = sortByParam || "create_at";
+    const sortBy = sortByParam || "name";
     const order = (orderParam as "asc" | "desc") || "desc";
 
     const skip = (page - 1) * pageSize;

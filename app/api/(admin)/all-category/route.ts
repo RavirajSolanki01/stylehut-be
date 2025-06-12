@@ -12,6 +12,9 @@ export async function GET(req: Request) {
       where: {
         is_deleted: false,
       },
+      orderBy: {
+        name: "asc",
+      },
     });
 
     return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, categories), {
