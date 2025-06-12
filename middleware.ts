@@ -58,6 +58,7 @@ export async function middleware(req: NextRequest) {
     /^\/api\/coupon\/code\/[^/]+$/,
     /^\/api\/coupon\/offer(?:\/.*)?$/,
     /^\/api\/landing\/shop-by-category$/,
+    /^\/api\/all-brand(?:\/.*)?$/,
   ];
 
   // Define protected routes

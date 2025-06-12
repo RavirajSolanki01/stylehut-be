@@ -141,9 +141,15 @@ export const orderService = {
               include: {
                 product: {
                   include: {
-                    category: true,
-                    sub_category: true,
-                    sub_category_type: true,
+                    sub_category_type: {
+                      include: {
+                        sub_category: {
+                          include: {
+                            category: true,
+                          },
+                        },
+                      },
+                    },
                     brand: true,
                   },
                 },
@@ -236,9 +242,15 @@ export const orderService = {
             include: {
               product: {
                 include: {
-                  category: true,
-                  sub_category: true,
-                  sub_category_type: true,
+                  sub_category_type: {
+                    include: {
+                      sub_category: {
+                        include: {
+                          category: true,
+                        },
+                      },
+                    },
+                  },
                   brand: true,
                 },
               },
@@ -344,9 +356,15 @@ export const orderService = {
           include: {
             product: {
               include: {
-                category: true,
-                sub_category: true,
-                sub_category_type: true,
+                sub_category_type: {
+                  include: {
+                    sub_category: {
+                      include: {
+                        category: true,
+                      },
+                    },
+                  },
+                },
                 brand: true,
               },
             },

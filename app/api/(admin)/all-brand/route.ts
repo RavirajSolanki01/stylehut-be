@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { successResponse, errorResponse } from "@/app/utils/apiResponse";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { errorResponse, successResponse } from "@/app/utils/apiResponse";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
 import { HttpStatus } from "@/app/utils/enums/httpStatusCode";
 
@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    const categories = await prisma.category.findMany({
+    const subCategoryTypes = await prisma.brand.findMany({
       where: {
         is_deleted: false,
       },
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, categories), {
+    return NextResponse.json(successResponse(COMMON_CONSTANTS.SUCCESS, subCategoryTypes), {
       status: HttpStatus.OK,
     });
   } catch (error) {
