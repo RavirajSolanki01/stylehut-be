@@ -252,6 +252,75 @@ export const orderService = {
     return { data, total };
   },
 
+  async getAdminOrders(params: OrderQueryInput) {
+    const sanitizedSearch = params.search?.trim();
+
+    const where: any = {
+      is_deleted: false,
+      ...(params.status && { order_status: params.status }),
+      ...(params.payment_status && { payment_status: params.payment_status }),
+      ...(params.startDate &&
+        params.endDate && {
+          created_at: {
+            gte: new Date(params.startDate),
+            lte: new Date(params.endDate),
+          },
+        }),
+      ...(sanitizedSearch && {
+        OR: [
+          { id: { contains: sanitizedSearch, mode: "insensitive" } },
+          {
+            shipping_address: {
+              name: { contains: sanitizedSearch, mode: "insensitive" },
+            },
+          },
+          {
+            billing_address: {
+              name: { contains: sanitizedSearch, mode: "insensitive" },
+            },
+          },
+        ],
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      prisma.orders.findMany({
+        where,
+        orderBy: { [params.sortBy || "created_at"]: params.order || "desc" },
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                  sub_category: true,
+                  sub_category_type: true,
+                  brand: true,
+                },
+              },
+              size_quantity: {
+                include: {
+                  size_data: true,
+                },
+              },
+            },
+          },
+          shipping_address: true,
+          billing_address: true,
+          timeline: {
+            orderBy: { created_at: "desc" },
+          },
+          return_request: true,
+        },
+      }),
+      prisma.orders.count({ where }),
+    ]);
+
+    return { data, total };
+  },
+
   async getOrderById(userId: number, orderId: number) {
     const order = await prisma.orders.findFirst({
       where: {
