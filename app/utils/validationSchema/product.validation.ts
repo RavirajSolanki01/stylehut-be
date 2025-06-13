@@ -37,7 +37,55 @@ export const createProductSchema = z.object({
   images: z
     .array(z.object({}))
     .min(1, "At least one image is required")
-    .max(5, "Maximum 5 images allowed"),
+    .max(5, "Maximum 5 images allowed")
+    .optional(),
+  product_additional_details: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Additional detail ID must be an integer")
+          .positive("Additional detail ID must be positive"),
+        value: z.string().min(1, "Additional detail value is required"),
+      })
+    )
+    .min(1, "At least one additional detail is required"),
+  product_specifications: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Specification ID must be an integer")
+          .positive("Specification ID must be positive"),
+        value: z.string().min(1, "Specification value is required"),
+      })
+    )
+    .min(1, "At least one specification is required"),
+});
+
+export const productSpecificationAdditionalSchema = z.object({
+  product_additional_details: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Additional detail ID must be an integer")
+          .positive("Additional detail ID must be positive"),
+        value: z.string().min(1, "Additional detail value is required"),
+      })
+    )
+    .min(1, "At least one additional detail is required"),
+  product_specifications: z
+    .array(
+      z.object({
+        id: z
+          .number()
+          .int("Specification ID must be an integer")
+          .positive("Specification ID must be positive"),
+        value: z.string().min(1, "Specification value is required"),
+      })
+    )
+    .min(1, "At least one specification is required"),
 });
 
 // Product update schema
@@ -88,6 +136,40 @@ export const productQuerySchema = z.object({
     .string()
     .optional()
     .transform(val => parseInt(val || "100")),
+});
+
+export const productAdditionalCreateSchema = z.object({
+  product_article_attributes: z
+    .array(z.object({ key: z.string().trim(), value: z.string().trim() }))
+    .min(1, "At least one product article attribute is required"),
+  product_details: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      type: z.string().optional(),
+      content: z.string().optional(),
+    })
+  ),
+});
+
+export const productAdditionalUpdateSchema = z.object({
+  product_article_attributes: z.array(z.object({ key: z.string(), value: z.string() })),
+  product_details: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      type: z.string().optional(),
+      content: z.string().optional(),
+    })
+  ),
+});
+
+export const productAdditionalKeySchema = z.object({
+  name: z.string().trim(),
+});
+
+export const productSpecificationSchema = z.object({
+  name: z.string().trim(),
 });
 
 // Types inferred from schemas
