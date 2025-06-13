@@ -40,15 +40,9 @@ export const productService = {
           variant_id: data.variant_id,
         },
         include: {
-          sub_category_type: {
-            include: {
-              sub_category: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          }, // this will populate the sub_category_type_id data
+          category: true, // this will populate the category_id data
+          sub_category: true, // this will populate the sub_category_id data
+          sub_category_type: true, // this will populate the sub_category_type_id data
           brand: true, // this will populate the brand_id data
           size_quantities: {
             include: {
@@ -81,16 +75,16 @@ export const productService = {
       maxDiscount,
     } = params;
 
-    let orderBy;
+    let orderBy: ProductOrderBy;
     switch (sortBy) {
       case "category":
-        orderBy = { sub_category_type: { sub_category: { category: { name: order } } } };
+        orderBy = { category: { name: order } };
         break;
       case "brand":
         orderBy = { brand: { name: order } };
         break;
       case "sub_category":
-        orderBy = { sub_category_type: { sub_category: { name: order } } };
+        orderBy = { sub_category: { name: order } };
         break;
       case "sub_category_type":
         orderBy = { sub_category_type: { name: order } };
@@ -106,14 +100,18 @@ export const productService = {
           { name: { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           {
+            category: {
+              name: { contains: search, mode: "insensitive" as const },
+            },
+          },
+          {
+            sub_category: {
+              name: { contains: search, mode: "insensitive" as const },
+            },
+          },
+          {
             sub_category_type: {
               name: { contains: search, mode: "insensitive" as const },
-              sub_category: {
-                name: { contains: search, mode: "insensitive" as const },
-                category: {
-                  name: { contains: search, mode: "insensitive" as const },
-                },
-              },
             },
           },
           {
@@ -137,10 +135,8 @@ export const productService = {
           },
         ],
       }),
-      ...(category_id > 0 && {
-        sub_category_type: { sub_category: { category: { id: category_id } } },
-      }),
-      ...(sub_category_id > 0 && { sub_category_type: { sub_category: { id: sub_category_id } } }),
+      ...(category_id > 0 && { category_id }),
+      ...(sub_category_id > 0 && { sub_category_id }),
       ...(sub_category_type_id > 0 && { sub_category_type_id }),
       ...(brand_id > 0 && { brand_id }),
       ...((minPrice > 0 || maxPrice > 0) && {
@@ -166,15 +162,9 @@ export const productService = {
             where: { is_deleted: false },
             select: { ratings: true },
           },
-          sub_category_type: {
-            include: {
-              sub_category: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          },
+          category: true,
+          sub_category: true,
+          sub_category_type: true,
           brand: true,
           size_quantities: {
             include: {
@@ -210,15 +200,9 @@ export const productService = {
     }
 
     let include: ProductInclude = {
-      sub_category_type: {
-        include: {
-          sub_category: {
-            include: {
-              category: true,
-            },
-          },
-        },
-      },
+      category: true,
+      sub_category: true,
+      sub_category_type: true,
       brand: true,
       ratings: {
         where: { is_deleted: false },
@@ -263,41 +247,40 @@ export const productService = {
     ]);
 
     const formattedData = data.map((product: ProductWithRelations): FormattedProduct => {
-      // Safely get ratings array
-      const productRatings = Array.isArray(product.ratings) ? product.ratings : [];
+      const ratings = product.ratings || [];
 
       // Calculate average rating
       const averageRating =
-        productRatings.length > 0
-          ? productRatings.reduce((acc: number, curr) => {
-              const ratingValue = curr?.ratings ? Number(curr.ratings) : 0;
-              return acc + (isNaN(ratingValue) ? 0 : ratingValue);
-            }, 0) / productRatings.length
+        ratings.length > 0
+          ? ratings.reduce((acc, curr) => acc + Number(curr.ratings), 0) / ratings.length
           : 0;
 
       // Get rating distribution
-      const ratingDistribution: RatingStats["distribution"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      const ratingDistribution: RatingStats["distribution"] = {
+        1: 0,
+        2: 0,
+        3: 0,
+        4: 0,
+        5: 0,
+      };
 
-      productRatings.forEach(rating => {
-        if (rating?.ratings) {
-          const ratingValue = Math.min(5, Math.max(1, Math.round(Number(rating.ratings))));
-          if (ratingValue >= 1 && ratingValue <= 5) {
-            ratingDistribution[ratingValue as keyof typeof ratingDistribution]++;
-          }
-        }
+      product.ratings.forEach(rating => {
+        ratingDistribution[Number(rating.ratings) as keyof typeof ratingDistribution]++;
       });
 
-      // Create formatted product with proper typing
-      const formattedProduct: FormattedProduct = {
+      let formattedProduct: FormattedProduct = {
         ...product,
         ratingStats: {
-          averageRating: isNaN(averageRating) ? 0 : parseFloat(averageRating.toFixed(2)),
-          totalRatings: productRatings.length,
+          averageRating,
+          totalRatings: product.ratings.length,
           distribution: ratingDistribution,
         },
-        isInCart: userId ? (product.cart_items?.length || 0) > 0 : undefined,
-        isInWishlist: userId ? (product.wishlist?.length || 0) > 0 : undefined,
       };
+
+      if (userId) {
+        formattedProduct.isInCart = (product?.cart_items?.length || 0) > 0;
+        formattedProduct.isInWishlist = (product?.wishlist?.length || 0) > 0;
+      }
 
       return formattedProduct;
     });
@@ -312,15 +295,9 @@ export const productService = {
         is_deleted: false,
       },
       include: {
-        sub_category_type: {
-          include: {
-            sub_category: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
+        category: true,
+        sub_category: true,
+        sub_category_type: true,
         brand: true,
         ratings: {
           where: { is_deleted: false },
@@ -407,15 +384,9 @@ export const productService = {
             },
           },
           brand: true,
-          sub_category_type: {
-            include: {
-              sub_category: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          },
+          category: true,
+          sub_category: true,
+          sub_category_type: true,
         },
       });
     }
@@ -474,15 +445,9 @@ export const productService = {
           },
         },
         include: {
-          sub_category_type: {
-            include: {
-              sub_category: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          },
+          category: true,
+          sub_category: true,
+          sub_category_type: true,
           brand: true,
           size_quantities: {
             include: {
@@ -551,15 +516,9 @@ export const productService = {
           updated_at: new Date(),
         },
         include: {
-          sub_category_type: {
-            include: {
-              sub_category: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          },
+          category: true,
+          sub_category: true,
+          sub_category_type: true,
           brand: true,
         },
       });

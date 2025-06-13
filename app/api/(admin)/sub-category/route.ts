@@ -82,7 +82,7 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
     const search = searchParams.get("search") || "";
-    const sortBy = searchParams.get("sortBy") || "name";
+    const sortBy = searchParams.get("sortBy") || "create_at";
     const order = (searchParams.get("order") as "asc" | "desc") || "desc";
     const categoryId = searchParams.get("categoryId");
 

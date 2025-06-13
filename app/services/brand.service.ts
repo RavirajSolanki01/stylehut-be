@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 export const brandService = {
   // Create brand
   async createBrand(data: CreateBrandDto) {
+
     const existingBrand = await prisma.brand.findFirst({
       where: {
         name: data.name,
@@ -24,14 +25,10 @@ export const brandService = {
     }
 
     const { id, ...cleanedData } = data;
-
+    
     return await prisma.brand.create({
       data: {
-        name: cleanedData.name,
-        description: cleanedData.description,
-        sub_categories: {
-          connect: cleanedData.subCategories.map(id => ({ id })),
-        },
+        ...cleanedData,
         is_deleted: false,
       },
     });
@@ -74,23 +71,15 @@ export const brandService = {
         id,
         is_deleted: false,
       },
-      include: {
-        sub_categories: true,
-      },
     });
   },
 
   // Update brand
   async updateBrand(id: number, data: UpdateBrandDto) {
-    console.log("data", data);
     return await prisma.brand.update({
       where: { id },
       data: {
-        name: data.name,
-        description: data.description,
-        sub_categories: {
-          set: data.subCategories.map(id => ({ id })),
-        },
+        ...data,
         updated_at: new Date(),
       },
     });
@@ -112,8 +101,8 @@ export const brandService = {
     const count = await prisma.brand.count({
       where: {
         id: Number(id),
-        is_deleted: false,
-      },
+        is_deleted: false
+      }
     });
     return count > 0;
   },

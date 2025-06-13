@@ -35,20 +35,19 @@ export async function GET(request: NextRequest, { params }: Props) {
 }
 
 export async function PUT(request: NextRequest, { params }: Props) {
+
   // Check admin authorization
   const authResponse = await checkAdminRole(request);
   if (authResponse) return authResponse;
 
   const validation = await validateRequest(createBrandSchema)(request);
-  if ("status" in validation) {
+  if ('status' in validation) {
     return validation;
   }
 
   try {
     const { id } = await params;
-    const nameExist = await checkNameConflict(validation.validatedData.name, "brand", {
-      excludeId: Number(id),
-    });
+    const nameExist = await checkNameConflict(validation.validatedData.name, "brand");
 
     if (nameExist.hasSameName && nameExist.message) {
       return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
@@ -56,20 +55,19 @@ export async function PUT(request: NextRequest, { params }: Props) {
       });
     }
 
-    const brand = await brandService.updateBrand(
-      Number(id),
-      validation.validatedData as UpdateBrandDto
-    );
+    const brand = await brandService.updateBrand(Number(id), validation.validatedData as UpdateBrandDto);
     return NextResponse.json(
       { message: COMMON_CONSTANTS.SUCCESS, data: brand },
       { status: HttpStatus.OK }
     );
+
   } catch (error: any) {
     console.error(error);
-    if (error.code === "P2002") {
-      return NextResponse.json(errorResponse("Gender already exists", HttpStatus.CONFLICT), {
-        status: HttpStatus.CONFLICT,
-      });
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        errorResponse("Gender already exists", HttpStatus.CONFLICT),
+        { status: HttpStatus.CONFLICT }
+      );
     }
 
     return NextResponse.json(
@@ -97,3 +95,4 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     );
   }
 }
+ 

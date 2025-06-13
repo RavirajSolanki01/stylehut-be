@@ -8,8 +8,8 @@ export const subCategoryService = {
     const count = await prisma.sub_category.count({
       where: {
         id: Number(id),
-        is_deleted: false,
-      },
+        is_deleted: false
+      }
     });
     return count > 0;
   },
@@ -21,22 +21,8 @@ export const subCategoryService = {
         is_deleted: false,
       },
       include: {
-        category: true,
-      },
+        category: true
+      }
     });
-  },
-
-  async getSubCategoryByIds(subCategoryId: number[]) {
-    const subCategories = await prisma.sub_category.findMany({
-      where: {
-        id: { in: subCategoryId },
-        is_deleted: false,
-      },
-      include: {
-        category: true,
-      },
-    });
-
-    return subCategories;
-  },
+  }
 };

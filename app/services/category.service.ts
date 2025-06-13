@@ -8,8 +8,8 @@ export const categoryService = {
     const count = await prisma.category.count({
       where: {
         id: Number(id),
-        is_deleted: false,
-      },
+        is_deleted: false
+      }
     });
     return count > 0;
   },
@@ -34,17 +34,17 @@ export const categoryService = {
               where: { is_deleted: false },
               include: {
                 sub_category_types: {
-                  where: { is_deleted: false },
-                },
-              },
-            },
+                  where: { is_deleted: false }
+                }
+              }
+            }
           },
-          orderBy: { name: "asc" },
+          orderBy: { name: 'asc' }
         }),
         // Fetch brands
         prisma.brand.findMany({
           where: { is_deleted: false },
-          orderBy: { name: "asc" },
+          orderBy: { name: 'asc' }
         }),
       ]);
 
@@ -61,21 +61,21 @@ export const categoryService = {
             sub_category_types: subCategory.sub_category_types.map(type => ({
               id: type.id,
               name: type.name,
-              description: type.description,
-            })),
-          })),
+              description: type.description
+            }))
+          }))
         })),
         brands: brands.map(brand => ({
           id: brand.id,
           name: brand.name,
-          description: brand.description,
-        })),
+          description: brand.description
+        }))
       };
 
       return formattedData;
     } catch (error) {
-      console.error("Get category data error:", error);
+      console.error('Get category data error:', error);
       throw error;
     }
-  },
+  }
 };

@@ -2,13 +2,11 @@ export interface CreateBrandDto {
   name: string;
   description: string;
   id?: number;
-  subCategories: number[];
 }
 
 export interface UpdateBrandDto {
   name?: string;
   description?: string;
-  subCategories: number[];
 }
 
 export interface BrandResponse {

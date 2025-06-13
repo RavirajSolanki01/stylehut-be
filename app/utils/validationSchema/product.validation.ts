@@ -21,6 +21,14 @@ export const createProductSchema = z.object({
     .max(100, "Discount cannot exceed 100%")
     .optional(),
   // quantity: z.number().int("Quantity must be an integer").min(0, "Quantity cannot be negative"),
+  category_id: z
+    .number()
+    .int("Category ID must be an integer")
+    .positive("Category ID must be positive"),
+  sub_category_id: z
+    .number()
+    .int("Sub-category ID must be an integer")
+    .positive("Sub-category ID must be positive"),
   sub_category_type_id: z
     .number()
     .int("Sub-category type ID must be an integer")
