@@ -8,14 +8,14 @@ import { createBrandSchema } from "@/app/utils/validationSchema/brand.validation
 import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { checkNameConflict } from "@/app/utils/helper";
-import { subCategoryService } from "@/app/services/subCategory.service";
 
 export async function POST(request: NextRequest) {
+
   const authResponse = await checkAdminRole(request);
   if (authResponse) return authResponse;
 
   const validation = await validateRequest(createBrandSchema)(request);
-  if ("status" in validation) {
+  if ('status' in validation) {
     return validation;
   }
 
@@ -26,19 +26,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse(nameExist.message, HttpStatus.BAD_REQUEST), {
         status: HttpStatus.BAD_REQUEST,
       });
-    }
-
-    const subCategories = await subCategoryService.getSubCategoryByIds(
-      validation.validatedData.subCategories
-    );
-
-    if (subCategories.length !== validation.validatedData.subCategories.length) {
-      return NextResponse.json(
-        errorResponse("Please pass valid subcategory ids", HttpStatus.NOT_FOUND),
-        {
-          status: HttpStatus.NOT_FOUND,
-        }
-      );
     }
 
     const brand = await brandService.createBrand(validation.validatedData as CreateBrandDto);
@@ -90,3 +77,4 @@ export async function GET(req: Request) {
     );
   }
 }
+ 
