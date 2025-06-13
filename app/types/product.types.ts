@@ -5,6 +5,8 @@ export interface CreateProductDto {
   price: number;
   discount?: number;
   // quantity: number;
+  category_id: number;
+  sub_category_id: number;
   sub_category_type_id: number;
   brand_id: number;
   size_quantity_id?: number;
