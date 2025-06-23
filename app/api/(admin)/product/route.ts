@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productService } from "@/app/services/product.service";
 import { errorResponse, successResponse, paginatedResponse } from "@/app/utils/apiResponse";
-import { categoryService } from "@/app/services/category.service";
-import { subCategoryService } from "@/app/services/subCategory.service";
 import { subCategoryTypeService } from "@/app/services/subCategoryType.service";
 import { brandService } from "@/app/services/brand.service";
 import { COMMON_CONSTANTS } from "@/app/utils/constants";
@@ -16,6 +14,8 @@ import { checkAdminRole } from "@/app/middleware/adminAuth";
 import { validateRequest } from "@/app/middleware/validateRequest";
 import { FormattedProduct } from "@/app/types/rating.types";
 import { PrismaClient } from "@prisma/client";
+import { categoryService } from "@/app/services/category.service";
+import { subCategoryService } from "@/app/services/subCategory.service";
 const prisma = new PrismaClient();
 // Configure Next.js to handle file uploads
 export const config = {
@@ -34,14 +34,7 @@ export async function POST(request: NextRequest) {
 
     const validation = await validateRequest(createProductSchema, {
       type: "formdata",
-      numberFields: [
-        "price",
-        "discount",
-        "category_id",
-        "sub_category_id",
-        "sub_category_type_id",
-        "brand_id",
-      ],
+      numberFields: ["price", "discount", "sub_category_type_id", "brand_id"],
       fileFields: ["images"],
       jsonFields: ["product_additional_details", "product_specifications"],
     })({ ...fields, ...files });
@@ -82,8 +75,6 @@ export async function POST(request: NextRequest) {
       description: fields.description?.[0] || "",
       price: parseFloat(fields.price?.[0] || "0"),
       discount: parseInt(fields.discount?.[0] || "0"),
-      category_id: parseInt(fields.category_id?.[0] || "0"),
-      sub_category_id: parseInt(fields.sub_category_id?.[0] || "0"),
       sub_category_type_id: parseInt(fields.sub_category_type_id?.[0] || "0"),
       brand_id: parseInt(fields.brand_id?.[0] || "0"),
       size_quantity_id: parseInt(fields.size_quantity_id?.[0] || "0"),

@@ -23,16 +23,18 @@ export async function GET(req: Request) {
         select: {
           id: true,
           name: true,
-          category: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
           sub_category: {
             select: {
               id: true,
               name: true,
+            },
+            include: {
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
