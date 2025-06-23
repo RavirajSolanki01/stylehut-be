@@ -14,8 +14,6 @@ export interface CreateProductDto {
   image?: string[];
   price: number;
   discount?: number;
-  category_id: number;
-  sub_category_id: number;
   sub_category_type_id: number;
   brand_id: number;
   size_quantity_id?: number;
@@ -26,7 +24,8 @@ export interface CreateProductDto {
   product_specifications?: ProductSpecificationDto[];
 }
 
-export interface UpdateProductDto extends Partial<Omit<CreateProductDto, 'product_additional_details' | 'product_specifications'>> {
+export interface UpdateProductDto
+  extends Partial<Omit<CreateProductDto, "product_additional_details" | "product_specifications">> {
   product_additional_details?: ProductAdditionalDetailDto[];
   product_specifications?: ProductSpecificationDto[];
 }

@@ -36,8 +36,6 @@ export const productService = {
             description: productData.description,
             price: productData.price,
             discount: productData.discount,
-            category_id: productData.category_id,
-            sub_category_id: productData.sub_category_id,
             sub_category_type_id: productData.sub_category_type_id,
             brand_id: productData.brand_id,
             custom_product_id: productData.custom_product_id,
@@ -79,9 +77,15 @@ export const productService = {
         return prisma.products.findUnique({
           where: { id: product.id },
           include: {
-            category: true,
-            sub_category: true,
-            sub_category_type: true,
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
             brand: true,
             size_quantities: {
               include: {
@@ -127,16 +131,16 @@ export const productService = {
       maxDiscount,
     } = params;
 
-    let orderBy: ProductOrderBy;
+    let orderBy;
     switch (sortBy) {
       case "category":
-        orderBy = { category: { name: order } };
+        orderBy = { sub_category_type: { sub_category: { category: { name: order } } } };
         break;
       case "brand":
         orderBy = { brand: { name: order } };
         break;
       case "sub_category":
-        orderBy = { sub_category: { name: order } };
+        orderBy = { sub_category_type: { sub_category: { name: order } } };
         break;
       case "sub_category_type":
         orderBy = { sub_category_type: { name: order } };
@@ -152,18 +156,14 @@ export const productService = {
           { name: { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           {
-            category: {
-              name: { contains: search, mode: "insensitive" as const },
-            },
-          },
-          {
-            sub_category: {
-              name: { contains: search, mode: "insensitive" as const },
-            },
-          },
-          {
             sub_category_type: {
               name: { contains: search, mode: "insensitive" as const },
+              sub_category: {
+                name: { contains: search, mode: "insensitive" as const },
+                category: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
             },
           },
           {
@@ -187,8 +187,10 @@ export const productService = {
           },
         ],
       }),
-      ...(category_id > 0 && { category_id }),
-      ...(sub_category_id > 0 && { sub_category_id }),
+      ...(category_id > 0 && {
+        sub_category_type: { sub_category: { category: { id: category_id } } },
+      }),
+      ...(sub_category_id > 0 && { sub_category_type: { sub_category: { id: sub_category_id } } }),
       ...(sub_category_type_id > 0 && { sub_category_type_id }),
       ...(brand_id > 0 && { brand_id }),
       ...((minPrice > 0 || maxPrice > 0) && {
@@ -214,9 +216,15 @@ export const productService = {
             where: { is_deleted: false },
             select: { ratings: true },
           },
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
           brand: true,
           size_quantities: {
             include: {
@@ -252,9 +260,15 @@ export const productService = {
     }
 
     let include: ProductInclude = {
-      category: true,
-      sub_category: true,
-      sub_category_type: true,
+      sub_category_type: {
+        include: {
+          sub_category: {
+            include: {
+              category: true,
+            },
+          },
+        },
+      },
       brand: true,
       ratings: {
         where: { is_deleted: false },
@@ -308,25 +322,22 @@ export const productService = {
           : 0;
 
       // Get rating distribution
-      const ratingDistribution: RatingStats["distribution"] = {
-        1: 0,
-        2: 0,
-        3: 0,
-        4: 0,
-        5: 0,
-      };
+      const ratingDistribution: RatingStats["distribution"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
       product.ratings.forEach(rating => {
         ratingDistribution[Number(rating.ratings) as keyof typeof ratingDistribution]++;
       });
 
-      let formattedProduct: FormattedProduct = {
+      // Create formatted product with proper typing
+      const formattedProduct: FormattedProduct = {
         ...product,
         ratingStats: {
           averageRating,
           totalRatings: product.ratings.length,
           distribution: ratingDistribution,
         },
+        isInCart: userId ? (product.cart_items?.length || 0) > 0 : undefined,
+        isInWishlist: userId ? (product.wishlist?.length || 0) > 0 : undefined,
       };
 
       if (userId) {
@@ -347,9 +358,15 @@ export const productService = {
         is_deleted: false,
       },
       include: {
-        category: true,
-        sub_category: true,
-        sub_category_type: true,
+        sub_category_type: {
+          include: {
+            sub_category: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
         brand: true,
         ratings: {
           where: { is_deleted: false },
@@ -446,9 +463,15 @@ export const productService = {
             },
           },
           brand: true,
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
         },
       });
     }
@@ -490,6 +513,7 @@ export const productService = {
         const newImageUrls = await Promise.all(
           files.map(file => uploadToCloudinary(file.filepath))
         );
+
         imageUrls = [...imageUrls, ...newImageUrls];
       }
 
@@ -501,7 +525,6 @@ export const productService = {
         },
       });
 
-      // Use transaction to ensure data consistency
       return await prisma.$transaction(async prisma => {
         // Update the product
         const updatedProduct = await prisma.products.update({
@@ -511,8 +534,6 @@ export const productService = {
             description: productData.description,
             price: productData.price,
             discount: productData.discount,
-            category_id: productData.category_id,
-            sub_category_id: productData.sub_category_id,
             sub_category_type_id: productData.sub_category_type_id,
             brand_id: productData.brand_id,
             custom_product_id: customProductId,
@@ -521,12 +542,33 @@ export const productService = {
             image: imageUrls,
             updated_at: new Date(),
             size_quantities: {
-              set: allSizeData.map(size => ({ id: size.id })),
+              connect: allSizeData.map(size => ({
+                id: size.id,
+              })),
+            },
+          },
+          include: {
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
+            brand: true,
+            size_quantities: {
+              include: {
+                size_data: {
+                  include: {
+                    size_chart_data: true,
+                  },
+                },
+              },
             },
           },
         });
-
-        // Update additional details if provided
         if (product_additional_details) {
           // Get all additional detail key IDs from the input
           const additionalDetailKeyIds = product_additional_details.map(detail => detail.id);
@@ -682,9 +724,15 @@ export const productService = {
         return prisma.products.findUnique({
           where: { id },
           include: {
-            category: true,
-            sub_category: true,
-            sub_category_type: true,
+            sub_category_type: {
+              include: {
+                sub_category: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
             brand: true,
             size_quantities: {
               include: {
@@ -760,9 +808,15 @@ export const productService = {
           updated_at: new Date(),
         },
         include: {
-          category: true,
-          sub_category: true,
-          sub_category_type: true,
+          sub_category_type: {
+            include: {
+              sub_category: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
           brand: true,
         },
       });
@@ -770,285 +824,5 @@ export const productService = {
       console.error("Remove product images error:", error);
       throw error;
     }
-  },
-
-  async createProductAdditionalKey(data: { name: string }) {
-    return await prisma.product_additional_detail_key.create({
-      data: {
-        name: data.name.trim(),
-      },
-    });
-  },
-
-  async checkProductAdditionalKeyPresent(name: string) {
-    return await prisma.product_additional_detail_key.findFirst({
-      where: {
-        name: {
-          equals: name.trim(),
-          mode: "insensitive",
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async checkProductAdditionalKeyPresentWithId(name: string, id: number) {
-    return await prisma.product_additional_detail_key.findFirst({
-      where: {
-        name: {
-          equals: name.trim(),
-          mode: "insensitive",
-        },
-        id: {
-          not: id,
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async checkProductAdditionalKeyAssociatedWithProduct(additionalKeyId: number) {
-    return await prisma.products.findFirst({
-      where: {
-        product_additional_details: {
-          some: {
-            additional_key_id: additionalKeyId,
-          },
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async deleteProductAdditionalKey(id: number) {
-    return await prisma.product_additional_detail_key.update({
-      where: { id },
-      data: {
-        is_deleted: true,
-      },
-    });
-  },
-
-  async updateProductAdditionalKey(id: number, data: { name: string }) {
-    return await prisma.product_additional_detail_key.update({
-      where: { id },
-      data: {
-        name: data.name.trim(),
-      },
-    });
-  },
-
-  async getSingleProductAdditionalKey(id: number) {
-    return await prisma.product_additional_detail_key.findUnique({
-      where: { id, is_deleted: false },
-    });
-  },
-
-  async getAllProductAdditionalKeyWithoutPagination() {
-    const whereClause: any = {
-      is_deleted: false,
-    };
-
-    return await prisma.product_additional_detail_key.findMany({
-      where: whereClause,
-      orderBy: {
-        name: "asc",
-      },
-    });
-  },
-
-  async getAllProductAdditionalKey(options?: {
-    page?: number;
-    limit?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    search?: string;
-  }) {
-    const page = options?.page || 1;
-    const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-    const sortBy = options?.sortBy || "create_at";
-    const sortOrder = options?.sortOrder || "desc";
-    const search = options?.search?.trim();
-
-    // Build the where clause with search condition
-    const whereClause: any = {
-      is_deleted: false,
-    };
-
-    if (search) {
-      whereClause.OR = [
-        {
-          name: {
-            contains: search,
-            mode: "insensitive" as const,
-          },
-        },
-      ];
-    }
-
-    const [items, total] = await Promise.all([
-      prisma.product_additional_detail_key.findMany({
-        where: whereClause,
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.product_additional_detail_key.count({
-        where: whereClause,
-      }),
-    ]);
-
-    return {
-      data: items,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  },
-
-  async createProductSpecificationKey(data: { name: string }) {
-    return await prisma.product_specification_key.create({
-      data: {
-        name: data.name.trim(),
-      },
-    });
-  },
-
-  async checkProductSpecificationKeyPresent(name: string) {
-    return await prisma.product_specification_key.findFirst({
-      where: {
-        name: {
-          equals: name.trim(),
-          mode: "insensitive",
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async checkProductSpecificationKeyPresentWithId(name: string, id: number) {
-    return await prisma.product_specification_key.findFirst({
-      where: {
-        name: {
-          equals: name.trim(),
-          mode: "insensitive",
-        },
-        id: {
-          not: id,
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async checkProductSpecificationAssociatedWithProduct(specificationId: number) {
-    return await prisma.products.findFirst({
-      where: {
-        product_specifications: {
-          some: {
-            specification_key_id: specificationId,
-          },
-        },
-        is_deleted: false,
-      },
-    });
-  },
-
-  async deleteProductSpecificationKey(id: number) {
-    return await prisma.product_specification_key.update({
-      where: { id },
-      data: {
-        is_deleted: true,
-      },
-    });
-  },
-
-  async updateProductSpecificationKey(id: number, data: { name: string }) {
-    return await prisma.product_specification_key.update({
-      where: { id },
-      data: {
-        name: data.name.trim(),
-      },
-    });
-  },
-
-  async getSingleProductSpecificationKey(id: number) {
-    return await prisma.product_specification_key.findUnique({
-      where: { id, is_deleted: false },
-    });
-  },
-
-  async getAllProductSpecificationKey(options?: {
-    page?: number;
-    limit?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    search?: string;
-  }) {
-    const page = options?.page || 1;
-    const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-    const sortBy = options?.sortBy || "create_at";
-    const sortOrder = options?.sortOrder || "desc";
-    const search = options?.search?.trim();
-
-    // Build the where clause with search condition
-    const whereClause: any = {
-      is_deleted: false,
-    };
-
-    if (search) {
-      whereClause.OR = [
-        {
-          name: {
-            contains: search,
-            mode: "insensitive" as const,
-          },
-        },
-      ];
-    }
-
-    const [items, total] = await Promise.all([
-      prisma.product_specification_key.findMany({
-        where: whereClause,
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.product_specification_key.count({
-        where: whereClause,
-      }),
-    ]);
-
-    return {
-      data: items,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  },
-
-  async getAllProductSpecificationKeyWithoutPagination() {
-    const whereClause: any = {
-      is_deleted: false,
-    };
-
-    return await prisma.product_specification_key.findMany({
-      where: whereClause,
-      orderBy: {
-        name: "asc",
-      },
-    });
   },
 };
